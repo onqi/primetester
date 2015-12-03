@@ -1,5 +1,6 @@
 package io.onqi.primetester;
 
+import org.perf4j.slf4j.Slf4JStopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,25 +17,30 @@ public class Worker {
    * Calculation doesn't utilize the power of {@link BigInteger#isProbablePrime(int)} on purpose as we need the processing to take longer than 20ms
    */
   public boolean checkIsPrime(BigInteger n) {
-    if (n.equals(ONE) || n.equals(ZERO)) {
+    Slf4JStopWatch stopWatch = new Slf4JStopWatch("worker");
+    try {
+      if (n.equals(ONE) || n.equals(ZERO)) {
+        return true;
+      }
+
+      BigInteger root = approximateRoot(n);
+      LOGGER.debug("{}: Using approximate root {}", n, root);
+
+      int cnt = 0;
+      for (BigInteger divider = THREE; divider.compareTo(root) <= 0; divider = divider.nextProbablePrime()) {
+        cnt++;
+        if (cnt % 1000 == 0) {
+          LOGGER.trace("{}: {} attempts made. Trying next divider {}", n, cnt, divider);
+        }
+        if (n.mod(divider).equals(ZERO)) {
+          LOGGER.debug("{}: divides by {}", n, divider);
+          return false;
+        }
+      }
       return true;
+    } finally {
+      stopWatch.stop();
     }
-
-    BigInteger root = approximateRoot(n);
-    LOGGER.debug("{}: Using approximate root {}", n, root);
-
-    int cnt = 0;
-    for (BigInteger divider = THREE; divider.compareTo(root) <= 0; divider = divider.nextProbablePrime()) {
-      cnt++;
-      if (cnt % 1000 == 0) {
-        LOGGER.trace("{}: {} attempts made. Trying next divider {}", n, cnt, divider);
-      }
-      if (n.mod(divider).equals(ZERO)) {
-        LOGGER.debug("{}: divides by {}", n, divider);
-        return false;
-      }
-    }
-    return true;
   }
 
   private BigInteger approximateRoot(BigInteger n) {

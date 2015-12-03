@@ -6,6 +6,36 @@
     </encoder>
   </appender>
 
+  <appender name="graphExecutionTimes" class="org.perf4j.logback.GraphingStatisticsAppender">
+    <!-- Possible GraphTypes are Mean, Min, Max, StdDev, Count and TPS -->
+    <param name="GraphType" value="Mean"/>
+    <!-- The tags of the timed execution blocks to graph are specified here -->
+    <param name="TagNamesToGraph" value="firstBlock,secondBlock"/>
+    <appender-ref ref="STDOUT"/>
+  </appender>
+
+  <appender name="graphExecutionTPS" class="org.perf4j.logback.GraphingStatisticsAppender">
+    <param name="GraphType" value="TPS"/>
+    <param name="TagNamesToGraph" value="firstBlock,secondBlock"/>
+    <appender-ref ref="STDOUT"/>
+  </appender>
+
+  <appender name="coalescingStatistics" class="org.perf4j.logback.AsyncCoalescingStatisticsAppender">
+    <param name="TimeSlice" value="1000"/>
+    <appender-ref ref="STDOUT"/>
+    <appender-ref ref="graphExecutionTimes"/>
+    <appender-ref ref="graphExecutionTPS"/>
+  </appender>
+
+  <logger name="org.perf4j.TimingLogger" additivity="false">
+    <level value="INFO"/>
+    <appender-ref ref="coalescingStatistics"/>
+  </logger>
+
+  <logger name="io.onqi.primetester.Worker">
+    <level value="INFO"/>
+  </logger>
+
   <root level="DEBUG">
     <appender-ref ref="STDOUT"/>
   </root>

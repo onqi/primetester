@@ -32,6 +32,13 @@
       <version>${logback.version}</version>
     </dependency>
 
+    <!--Perf4j-->
+    <dependency>
+      <groupId>org.perf4j</groupId>
+      <artifactId>perf4j</artifactId>
+      <version>0.9.16</version>
+    </dependency>
+
     <!--Test deps-->
     <dependency>
       <groupId>junit</groupId>

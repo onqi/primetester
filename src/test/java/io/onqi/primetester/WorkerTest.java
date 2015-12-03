@@ -16,7 +16,7 @@ public class WorkerTest {
   @Test
   public void primeIsReported() throws Exception {
     Worker worker = new Worker();
-    readPrimes(1).stream().forEach(prime -> assertThat(worker.checkIsPrime(new BigInteger(prime))).isTrue());
+    readPrimes(50).parallelStream().forEach(prime -> assertThat(worker.checkIsPrime(new BigInteger(prime))).isTrue());
   }
 
   @Test
