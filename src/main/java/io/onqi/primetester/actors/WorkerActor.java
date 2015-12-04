@@ -1,4 +1,4 @@
-package io.onqi.primetester.worker;
+package io.onqi.primetester.actors;
 
 import akka.actor.Props;
 import akka.actor.UntypedActor;

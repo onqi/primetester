@@ -140,7 +140,6 @@
         <artifactId>jetty-maven-plugin</artifactId>
         <version>9.3.6.v20151106</version>
         <configuration>
-          <jettyXml>${project.basedir}/src/main/resources/customErrorHandling.xml</jettyXml>
           <webAppConfig>
             <contextPath>/</contextPath>
           </webAppConfig>

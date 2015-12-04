@@ -2,17 +2,26 @@ package io.onqi.primetester.web.rest;
 
 import akka.actor.ActorSystem;
 import akka.routing.RoundRobinPool;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
-import io.onqi.primetester.worker.WorkerActor;
+import io.onqi.primetester.actors.RegistrarActor;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.filter.LoggingFilter;
 import org.glassfish.jersey.server.ResourceConfig;
+import org.glassfish.jersey.server.ServerProperties;
+import org.glassfish.jersey.server.TracingConfig;
 import scala.concurrent.duration.Duration;
 
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PreDestroy;
 import javax.ws.rs.ApplicationPath;
+
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+import static com.fasterxml.jackson.databind.introspect.VisibilityChecker.Std.defaultInstance;
 
 @ApplicationPath("/")
 public class Application extends ResourceConfig {
@@ -22,7 +31,7 @@ public class Application extends ResourceConfig {
   public Application() {
 
     system = ActorSystem.create("primetester");
-    system.actorOf(WorkerActor.createProps().withRouter(new RoundRobinPool(5)), "workerActor");
+    system.actorOf(RegistrarActor.createProps().withRouter(new RoundRobinPool(5)), "registrarRouter");
 
     register(new AbstractBinder() {
       protected void configure() {
@@ -30,7 +39,6 @@ public class Application extends ResourceConfig {
       }
     });
 
-/*
     ObjectMapper om = new ObjectMapper()
             .registerModule(new Jdk8Module())
             .configure(SerializationFeature.INDENT_OUTPUT, false)
@@ -39,13 +47,13 @@ public class Application extends ResourceConfig {
             .setVisibility(defaultInstance()
                     .withGetterVisibility(JsonAutoDetect.Visibility.NONE)
                     .withFieldVisibility(JsonAutoDetect.Visibility.ANY));
-*/
 
-    //    register(new JacksonJsonProvider(om));
-    register(new JacksonJsonProvider());
-    register(LoggingFilter.class);
+    register(new JacksonJsonProvider(om));
 
-    packages(this.getClass().getPackage().getName());
+    register(new LoggingFilter());
+    property(ServerProperties.TRACING, TracingConfig.ALL.toString());
+
+    packages("io.onqi");
   }
 
   @PreDestroy
