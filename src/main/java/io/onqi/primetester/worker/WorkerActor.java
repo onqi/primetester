@@ -1,17 +1,33 @@
-package io.onqi.primetester;
+package io.onqi.primetester.worker;
 
+import akka.actor.Props;
+import akka.actor.UntypedActor;
+import akka.event.Logging;
+import akka.event.LoggingAdapter;
 import org.perf4j.slf4j.Slf4JStopWatch;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 
 import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.ZERO;
 
-public class Worker {
+public class WorkerActor extends UntypedActor {
   private static final BigInteger THREE = BigInteger.valueOf(3L);
-  private static final Logger LOGGER = LoggerFactory.getLogger(Worker.class);
+  private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
+
+  public static Props createProps() {
+    return Props.create(WorkerActor.class);
+  }
+
+  @Override
+  public void onReceive(Object message) throws Exception {
+    if (message instanceof BigInteger) {
+      log.debug("received message {}" + message);
+      getSender().tell(checkIsPrime((BigInteger) message), getSelf());
+    } else {
+      unhandled(message);
+    }
+  }
 
   /**
    * Calculation doesn't utilize the power of {@link BigInteger#isProbablePrime(int)} on purpose as we need the processing to take longer than 20ms
@@ -24,16 +40,11 @@ public class Worker {
       }
 
       BigInteger root = approximateRoot(n);
-      LOGGER.debug("{}: Using approximate root {}", n, root);
+      log.debug("{}: Using approximate root {}", n, root);
 
-      int cnt = 0;
       for (BigInteger divider = THREE; divider.compareTo(root) <= 0; divider = divider.nextProbablePrime()) {
-        cnt++;
-        if (cnt % 1000 == 0) {
-          LOGGER.trace("{}: {} attempts made. Trying next divider {}", n, cnt, divider);
-        }
         if (n.mod(divider).equals(ZERO)) {
-          LOGGER.debug("{}: divides by {}", n, divider);
+          log.debug("{}: divides by {}", n, divider);
           return false;
         }
       }

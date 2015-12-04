@@ -1,6 +1,8 @@
 Prime tester
 ======================
 
+# Running
+App is a war, so it can be ran in any container. `mvn jetty:run` can be used for quick testing.
 
 # Test data preparation
 Pre-calculated prime numbers are used as test data set.
@@ -19,3 +21,14 @@ This process can be automated, but left as is for now because of the following r
 
 - there's no way to bypass cert issues without fixing keychain (running `keytool`) on the machine where code runs
 - `exec-maven-plugin` is platform-dependent
+
+
+# TODO
+* make endpoint to return data synchronously
+* enable async processing
+* websockets
+* perftest
+* clusterize
+* JUL-slf4j perf issue
+* cleanup structures
+* finish readme

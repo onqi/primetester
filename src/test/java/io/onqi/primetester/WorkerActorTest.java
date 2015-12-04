@@ -1,5 +1,6 @@
 package io.onqi.primetester;
 
+import io.onqi.primetester.worker.WorkerActor;
 import org.junit.Test;
 
 import java.math.BigInteger;
@@ -11,18 +12,18 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class WorkerTest {
+public class WorkerActorTest {
 
   @Test
   public void primeIsReported() throws Exception {
-    Worker worker = new Worker();
-    readPrimes(50).parallelStream().forEach(prime -> assertThat(worker.checkIsPrime(new BigInteger(prime))).isTrue());
+    WorkerActor workerActor = new WorkerActor();
+    readPrimes(50).parallelStream().forEach(prime -> assertThat(workerActor.checkIsPrime(new BigInteger(prime))).isTrue());
   }
 
   @Test
   public void nonPrimeIsReported() throws Exception {
-    Worker worker = new Worker();
-    assertThat(worker.checkIsPrime(new BigInteger("9823458762743567243567"))).isFalse();
+    WorkerActor workerActor = new WorkerActor();
+    assertThat(workerActor.checkIsPrime(new BigInteger("9823458762743567243567"))).isFalse();
   }
 
   @Test
@@ -31,7 +32,7 @@ public class WorkerTest {
   }
 
   private static List<String> readPrimes(int count) throws Exception {
-    Stream<String> primesStream = Files.lines(Paths.get(WorkerTest.class.getResource("/primes50.txt").toURI()));
+    Stream<String> primesStream = Files.lines(Paths.get(WorkerActorTest.class.getResource("/primes50.txt").toURI()));
     return primesStream.limit(count).collect(Collectors.toList());
   }
 }
