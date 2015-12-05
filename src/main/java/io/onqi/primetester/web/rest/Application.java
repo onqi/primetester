@@ -11,14 +11,11 @@ import io.onqi.primetester.actors.RegistrarActor;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.filter.LoggingFilter;
 import org.glassfish.jersey.server.ResourceConfig;
-import org.glassfish.jersey.server.ServerProperties;
-import org.glassfish.jersey.server.TracingConfig;
 import scala.concurrent.duration.Duration;
-
-import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PreDestroy;
 import javax.ws.rs.ApplicationPath;
+import java.util.concurrent.TimeUnit;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static com.fasterxml.jackson.databind.introspect.VisibilityChecker.Std.defaultInstance;
@@ -51,7 +48,7 @@ public class Application extends ResourceConfig {
     register(new JacksonJsonProvider(om));
 
     register(new LoggingFilter());
-    property(ServerProperties.TRACING, TracingConfig.ALL.toString());
+//    property(ServerProperties.TRACING, TracingConfig.ALL.toString());
 
     packages("io.onqi");
   }

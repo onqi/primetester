@@ -1,13 +1,8 @@
 package io.onqi.primetester.web.rest.resources;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-
 import java.math.BigInteger;
 import java.util.Optional;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-
-@JsonInclude(NON_NULL)
 public class PrimeTestResource {
   private Long id;
   private String number;
