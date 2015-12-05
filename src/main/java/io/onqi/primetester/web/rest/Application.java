@@ -1,21 +1,16 @@
 package io.onqi.primetester.web.rest;
 
-import akka.actor.ActorSystem;
-import akka.routing.RoundRobinPool;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
-import io.onqi.primetester.actors.RegistrarActor;
-import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.filter.LoggingFilter;
 import org.glassfish.jersey.server.ResourceConfig;
-import scala.concurrent.duration.Duration;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import javax.annotation.PreDestroy;
 import javax.ws.rs.ApplicationPath;
-import java.util.concurrent.TimeUnit;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static com.fasterxml.jackson.databind.introspect.VisibilityChecker.Std.defaultInstance;
@@ -23,18 +18,14 @@ import static com.fasterxml.jackson.databind.introspect.VisibilityChecker.Std.de
 @ApplicationPath("/")
 public class Application extends ResourceConfig {
 
-  private ActorSystem system;
+  private ActorSystemHolder systemHolder;
 
   public Application() {
+    SLF4JBridgeHandler.removeHandlersForRootLogger();
+    SLF4JBridgeHandler.install();
 
-    system = ActorSystem.create("primetester");
-    system.actorOf(RegistrarActor.createProps().withRouter(new RoundRobinPool(5)), "registrarRouter");
-
-    register(new AbstractBinder() {
-      protected void configure() {
-        bind(system).to(ActorSystem.class);
-      }
-    });
+    systemHolder = new ActorSystemHolder();
+    register(systemHolder.binder());
 
     ObjectMapper om = new ObjectMapper()
             .registerModule(new Jdk8Module())
@@ -48,7 +39,8 @@ public class Application extends ResourceConfig {
     register(new JacksonJsonProvider(om));
 
     register(new LoggingFilter());
-//    property(ServerProperties.TRACING, TracingConfig.ALL.toString());
+
+//    property(ServerProperties.TRACING, TracingConfig.OFF.toString());
 
     packages("io.onqi");
   }
@@ -56,7 +48,6 @@ public class Application extends ResourceConfig {
   @PreDestroy
   @SuppressWarnings("unused")
   private void shutdown() {
-    system.shutdown();
-    system.awaitTermination(Duration.create(15, TimeUnit.SECONDS));
+    systemHolder.shutdown();
   }
 }

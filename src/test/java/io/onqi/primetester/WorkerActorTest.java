@@ -4,7 +4,6 @@ import io.onqi.primetester.actors.WorkerActor;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -19,14 +18,14 @@ public class WorkerActorTest {
   @Ignore("Figure out how to test using actorSystem")
   public void primeIsReported() throws Exception {
     WorkerActor workerActor = new WorkerActor();
-    readPrimes(50).parallelStream().forEach(prime -> assertThat(workerActor.checkIsPrime(new BigInteger(prime))).isTrue());
+    readPrimes(50).parallelStream().forEach(prime -> assertThat(workerActor.checkIsPrime(new WorkerActor.CalculationRequest(1, prime)).isPrime()).isTrue());
   }
 
   @Test
   @Ignore("Figure out how to test using actorSystem")
   public void nonPrimeIsReported() throws Exception {
     WorkerActor workerActor = new WorkerActor();
-    assertThat(workerActor.checkIsPrime(new BigInteger("9823458762743567243567"))).isFalse();
+    assertThat(workerActor.checkIsPrime(new WorkerActor.CalculationRequest(1, "9823458762743567243567")).isPrime()).isFalse();
   }
 
   @Test
