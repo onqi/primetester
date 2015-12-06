@@ -26,8 +26,8 @@ public class WorkerActor extends UntypedActor {
   @Override
   public void onReceive(Object message) throws Exception {
     log.debug("Received message {}", message);
-    if (message instanceof CalculationRequest) {
-      CalculationResult response = checkIsPrime((CalculationRequest) message);
+    if (message instanceof TaskDispatcherActor.CalculationRequest) {
+      CalculationResult response = checkIsPrime((TaskDispatcherActor.CalculationRequest) message);
       getSender().tell(response, noSender());
     } else {
       unhandled(message);
@@ -42,17 +42,17 @@ public class WorkerActor extends UntypedActor {
   /**
    * Calculation doesn't utilize the power of {@link BigInteger#isProbablePrime(int)} on purpose as we need the processing to take longer than 20ms
    */
-  public CalculationResult checkIsPrime(CalculationRequest request) {
+  public CalculationResult checkIsPrime(TaskDispatcherActor.CalculationRequest request) {
     BigInteger n = new BigInteger(request.getNumber());
     log.debug("Checking {}", n);
     Slf4JStopWatch stopWatch = new Slf4JStopWatch("worker");
     try {
       if (ZERO.equals(n) || ONE.equals(n)) {
-        return new CalculationResult(request.id, request.number, true, Optional.empty());
+        return new CalculationResult(request.getId(), request.getNumber(), true, Optional.empty());
       }
 
       if (TWO.equals(n)) {
-        return new CalculationResult(request.id, request.number, false, Optional.of(ONE.toString()));
+        return new CalculationResult(request.getId(), request.getNumber(), false, Optional.of(ONE.toString()));
       }
 
       BigInteger root = approximateRoot(n);
@@ -61,10 +61,10 @@ public class WorkerActor extends UntypedActor {
       for (BigInteger divider = THREE; divider.compareTo(root) <= 0; divider = divider.nextProbablePrime()) {
         if (n.mod(divider).equals(ZERO)) {
           log.debug("{}: divides by {}", n, divider);
-          return new CalculationResult(request.id, request.number, false, Optional.of(divider.toString()));
+          return new CalculationResult(request.getId(), request.getNumber(), false, Optional.of(divider.toString()));
         }
       }
-      return new CalculationResult(request.id, request.number, true, Optional.empty());
+      return new CalculationResult(request.getId(), request.getNumber(), true, Optional.empty());
     } finally {
       stopWatch.stop();
     }
@@ -78,48 +78,7 @@ public class WorkerActor extends UntypedActor {
     return half.shiftLeft(1);
   }
 
-  public static class CalculationRequest {
-    private static final long serialVersionUID = 1L;
-    private final long id;
-    private final String number;
-
-    public CalculationRequest(long id, String number) {
-      this.id = id;
-      this.number = number;
-    }
-
-    public long getId() {
-      return id;
-    }
-
-    public String getNumber() {
-      return number;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      CalculationRequest that = (CalculationRequest) o;
-      return id == that.id &&
-              Objects.equals(number, that.number);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(id, number);
-    }
-
-    @Override
-    public String toString() {
-      return "CalculationRequest{" +
-              "id=" + id +
-              ", number='" + number + '\'' +
-              '}';
-    }
-  }
-
-  public static class CalculationResult extends CalculationRequest {
+  public static class CalculationResult extends TaskDispatcherActor.CalculationRequest {
     private static final long serialVersionUID = 1L;
 
     private final boolean isPrime;
