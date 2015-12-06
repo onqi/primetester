@@ -16,10 +16,6 @@
     <appender-ref ref="coalescingStatistics"/>
   </logger>
 
-  <logger name="io.onqi.primetester.WorkerActor">
-    <level value="INFO"/>
-  </logger>
-
   <root level="DEBUG">
     <appender-ref ref="STDOUT"/>
   </root>
