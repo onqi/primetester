@@ -26,8 +26,8 @@ public class WorkerActor extends UntypedActor {
   @Override
   public void onReceive(Object message) throws Exception {
     log.debug("Received message {}", message);
-    if (message instanceof TaskDispatcherActor.CalculationRequest) {
-      CalculationResult response = checkIsPrime((TaskDispatcherActor.CalculationRequest) message);
+    if (message instanceof TaskIdAssignedMessage) {
+      CalculationResult response = checkIsPrime((TaskIdAssignedMessage) message);
       getSender().tell(response, noSender());
     } else {
       unhandled(message);
@@ -42,17 +42,17 @@ public class WorkerActor extends UntypedActor {
   /**
    * Calculation doesn't utilize the power of {@link BigInteger#isProbablePrime(int)} on purpose as we need the processing to take longer than 20ms
    */
-  public CalculationResult checkIsPrime(TaskDispatcherActor.CalculationRequest request) {
-    BigInteger n = new BigInteger(request.getNumber());
+  public CalculationResult checkIsPrime(TaskIdAssignedMessage message) {
+    BigInteger n = new BigInteger(message.getNumber());
     log.debug("Checking {}", n);
     Slf4JStopWatch stopWatch = new Slf4JStopWatch("worker");
     try {
       if (ZERO.equals(n) || ONE.equals(n)) {
-        return new CalculationResult(request.getId(), request.getNumber(), true, Optional.empty());
+        return new CalculationResult(message.getTaskId(), message.getNumber(), true, Optional.empty());
       }
 
       if (TWO.equals(n)) {
-        return new CalculationResult(request.getId(), request.getNumber(), false, Optional.of(ONE.toString()));
+        return new CalculationResult(message.getTaskId(), message.getNumber(), false, Optional.of(ONE.toString()));
       }
 
       BigInteger root = approximateRoot(n);
@@ -61,10 +61,10 @@ public class WorkerActor extends UntypedActor {
       for (BigInteger divider = THREE; divider.compareTo(root) <= 0; divider = divider.nextProbablePrime()) {
         if (n.mod(divider).equals(ZERO)) {
           log.debug("{}: divides by {}", n, divider);
-          return new CalculationResult(request.getId(), request.getNumber(), false, Optional.of(divider.toString()));
+          return new CalculationResult(message.getTaskId(), message.getNumber(), false, Optional.of(divider.toString()));
         }
       }
-      return new CalculationResult(request.getId(), request.getNumber(), true, Optional.empty());
+      return new CalculationResult(message.getTaskId(), message.getNumber(), true, Optional.empty());
     } finally {
       stopWatch.stop();
     }
@@ -78,16 +78,27 @@ public class WorkerActor extends UntypedActor {
     return half.shiftLeft(1);
   }
 
-  public static class CalculationResult extends TaskDispatcherActor.CalculationRequest {
+  public static class CalculationResult {
     private static final long serialVersionUID = 1L;
 
+    private final long taskId;
+    private final String number;
     private final boolean isPrime;
     private final Optional<String> divider;
 
-    public CalculationResult(long id, String number, boolean isPrime, Optional<String> divider) {
-      super(id, number);
+    public CalculationResult(long taskId, String number, boolean isPrime, Optional<String> divider) {
+      this.taskId = taskId;
+      this.number = number;
       this.isPrime = isPrime;
       this.divider = divider;
+    }
+
+    public long getTaskId() {
+      return taskId;
+    }
+
+    public String getNumber() {
+      return number;
     }
 
     public boolean isPrime() {
@@ -103,21 +114,25 @@ public class WorkerActor extends UntypedActor {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
       CalculationResult that = (CalculationResult) o;
-      return isPrime == that.isPrime &&
+      return taskId == that.taskId &&
+              isPrime == that.isPrime &&
+              Objects.equals(number, that.number) &&
               Objects.equals(divider, that.divider);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(isPrime, divider);
+      return Objects.hash(taskId, number, isPrime, divider);
     }
 
     @Override
     public String toString() {
       return "CalculationResult{" +
-              "isPrime=" + isPrime +
+              "taskId=" + taskId +
+              ", number='" + number + '\'' +
+              ", isPrime=" + isPrime +
               ", divider=" + divider +
-              "} " + super.toString();
+              '}';
     }
   }
 }

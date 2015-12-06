@@ -4,10 +4,13 @@ import akka.actor.ActorSystem;
 import akka.testkit.JavaTestKit;
 import akka.testkit.TestActorRef;
 import org.junit.Test;
+import scala.concurrent.duration.FiniteDuration;
 
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import static io.onqi.primetester.StorageActor.Status.FINISHED;
+import static io.onqi.primetester.StorageActor.Status.QUEUED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.MapEntry.entry;
 
@@ -28,4 +31,17 @@ public class StorageActorTest extends JavaTestKit {
     assertThat(storage.underlyingActor().getStatuses()).contains(entry(taskId, FINISHED));
   }
 
+  @Test
+  public void newNumberCalculationIsQueued() {
+    long taskId = 1L;
+    String number = "1";
+    NewNumberCalculationMessage msg = new NewNumberCalculationMessage(number);
+    TestActorRef<StorageActor> storage = TestActorRef.create(getSystem(), StorageActor.createProps());
+    storage.tell(msg, getTestActor());
+
+    assertThat(storage.underlyingActor().getResults()).isEmpty();
+    assertThat(storage.underlyingActor().getStatuses()).contains(entry(taskId, QUEUED));
+
+    expectMsgEquals(FiniteDuration.apply(20, TimeUnit.MILLISECONDS), new TaskIdAssignedMessage(taskId, number));
+  }
 }

@@ -27,7 +27,7 @@ public class WorkerActorTest extends JavaTestKit {
   @Test
   public void primeIsReportedFor1() throws Exception {
     String number = "1";
-    TaskDispatcherActor.CalculationRequest msg = new TaskDispatcherActor.CalculationRequest(TASK_ID, number);
+    TaskIdAssignedMessage msg = new TaskIdAssignedMessage(TASK_ID, number);
 
     ActorRef worker = getSystem().actorOf(WorkerActor.createProps());
     worker.tell(msg, getTestActor());
@@ -39,7 +39,7 @@ public class WorkerActorTest extends JavaTestKit {
   @Test
   public void nonPrimeIsReportedFor2() throws Exception {
     String number = "2";
-    TaskDispatcherActor.CalculationRequest msg = new TaskDispatcherActor.CalculationRequest(TASK_ID, number);
+    TaskIdAssignedMessage msg = new TaskIdAssignedMessage(TASK_ID, number);
 
     ActorRef worker = getSystem().actorOf(WorkerActor.createProps());
     worker.tell(msg, getTestActor());
@@ -51,7 +51,7 @@ public class WorkerActorTest extends JavaTestKit {
   @Test
   public void primeIsReportedForRealPrime() throws Exception {
     String number = readPrimes(1).stream().findFirst().orElseThrow(() -> new RuntimeException("failed to read primes"));
-    TaskDispatcherActor.CalculationRequest msg = new TaskDispatcherActor.CalculationRequest(TASK_ID, number);
+    TaskIdAssignedMessage msg = new TaskIdAssignedMessage(TASK_ID, number);
 
     ActorRef worker = getSystem().actorOf(WorkerActor.createProps());
     worker.tell(msg, getTestActor());

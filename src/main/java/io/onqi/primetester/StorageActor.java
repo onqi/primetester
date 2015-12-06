@@ -7,6 +7,9 @@ import akka.event.LoggingAdapter;
 import io.onqi.primetester.WorkerActor.CalculationResult;
 
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static akka.actor.ActorRef.noSender;
 
 /**
  * Storage for the prime test results.
@@ -17,6 +20,7 @@ import java.util.HashMap;
 public class StorageActor extends UntypedActor {
   private LoggingAdapter log = Logging.getLogger(context().system(), this);
 
+  private AtomicLong id = new AtomicLong();
   private HashMap<Long, Status> statuses = new HashMap<>();
   private HashMap<String, CalculationResult> results = new HashMap<>();
 
@@ -30,11 +34,19 @@ public class StorageActor extends UntypedActor {
   @Override
   public void onReceive(Object message) throws Exception {
     log.debug("Received message {}", message);
-    if (message instanceof CalculationResult) {
+    if (message instanceof NewNumberCalculationMessage) {
+      NewNumberCalculationMessage msg = (NewNumberCalculationMessage) message;
+      long taskId = id.incrementAndGet();
+      statuses.put(taskId, Status.QUEUED);
+
+      getSender().tell(new TaskIdAssignedMessage(taskId, msg.getNumber()), noSender());
+
+    } else if (message instanceof WorkerActor.CalculationResult) {
       CalculationResult calculationResult = (CalculationResult) message;
 
       results.put(calculationResult.getNumber(), calculationResult);
-      statuses.put(calculationResult.getId(), Status.FINISHED);
+      statuses.put(calculationResult.getTaskId(), Status.FINISHED);
+
     } else {
       unhandled(message);
     }
