@@ -1,6 +1,9 @@
 package io.onqi.primetester;
 
 import akka.actor.ActorSystem;
+import io.onqi.primetester.actors.StorageActor;
+import io.onqi.primetester.actors.TaskDispatcherActor;
+import io.onqi.primetester.actors.WorkerActor;
 import scala.concurrent.duration.Duration;
 
 import java.util.concurrent.TimeUnit;

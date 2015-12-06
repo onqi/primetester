@@ -1,4 +1,4 @@
-package io.onqi.primetester;
+package io.onqi.primetester.actors;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSelection;
@@ -6,6 +6,8 @@ import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import io.onqi.primetester.ActorSystemHolder;
+import io.onqi.primetester.NewNumberCalculationMessage;
 
 public class TaskDispatcherActor extends UntypedActor {
   private LoggingAdapter log = Logging.getLogger(context().system(), this);

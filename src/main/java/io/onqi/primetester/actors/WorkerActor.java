@@ -1,10 +1,11 @@
-package io.onqi.primetester;
+package io.onqi.primetester.actors;
 
 import akka.actor.ActorSelection;
 import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import io.onqi.primetester.ActorSystemHolder;
 import org.perf4j.slf4j.Slf4JStopWatch;
 
 import java.math.BigInteger;

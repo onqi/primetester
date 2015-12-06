@@ -1,10 +1,10 @@
-package io.onqi.primetester;
+package io.onqi.primetester.actors;
 
 import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import io.onqi.primetester.WorkerActor.CalculationFinished;
+import io.onqi.primetester.NewNumberCalculationMessage;
 
 import java.util.HashMap;
 import java.util.Objects;
@@ -30,7 +30,7 @@ public class StorageActor extends UntypedActor {
   }
 
   /**
-   * {@link CalculationFinished} from {@link io.onqi.primetester.WorkerActor} to persist calculation result<br/>
+   * {@link WorkerActor.CalculationFinished} from {@link WorkerActor} to persist calculation result<br/>
    */
   @Override
   public void onReceive(Object message) throws Exception {
@@ -44,8 +44,8 @@ public class StorageActor extends UntypedActor {
     } else if (message instanceof WorkerActor.CalculationStarted) {
       statuses.put(((WorkerActor.CalculationStarted) message).getTaskId(), Status.STARTED);
 
-    } else if (message instanceof CalculationFinished) {
-      WorkerActor.CalculationFinished calculationFinished = (CalculationFinished) message;
+    } else if (message instanceof WorkerActor.CalculationFinished) {
+      WorkerActor.CalculationFinished calculationFinished = (WorkerActor.CalculationFinished) message;
 
       results.put(calculationFinished.getNumber(), calculationFinished);
       statuses.put(calculationFinished.getTaskId(), Status.FINISHED);

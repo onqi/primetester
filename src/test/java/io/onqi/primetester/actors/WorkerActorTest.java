@@ -1,4 +1,4 @@
-package io.onqi.primetester;
+package io.onqi.primetester.actors;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;

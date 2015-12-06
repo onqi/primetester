@@ -1,8 +1,9 @@
-package io.onqi.primetester;
+package io.onqi.primetester.actors;
 
 import akka.actor.ActorSystem;
 import akka.testkit.JavaTestKit;
 import akka.testkit.TestActorRef;
+import io.onqi.primetester.NewNumberCalculationMessage;
 import org.junit.AfterClass;
 import org.junit.Test;
 import scala.concurrent.duration.Duration;
@@ -11,7 +12,7 @@ import scala.concurrent.duration.FiniteDuration;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-import static io.onqi.primetester.StorageActor.Status.*;
+import static io.onqi.primetester.actors.StorageActor.Status.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.MapEntry.entry;
 
