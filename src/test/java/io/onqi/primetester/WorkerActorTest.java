@@ -21,7 +21,7 @@ public class WorkerActorTest extends JavaTestKit {
   public static final long TASK_ID = 1L;
 
   public WorkerActorTest() {
-    super(ActorSystem.create("primetester"));
+    super(ActorSystem.create());
   }
 
   @Test
