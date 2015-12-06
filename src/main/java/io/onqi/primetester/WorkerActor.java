@@ -34,6 +34,11 @@ public class WorkerActor extends UntypedActor {
     }
   }
 
+  @Override
+  public void postStop() throws Exception {
+    log.debug("Worker stopped");
+  }
+
   /**
    * Calculation doesn't utilize the power of {@link BigInteger#isProbablePrime(int)} on purpose as we need the processing to take longer than 20ms
    */

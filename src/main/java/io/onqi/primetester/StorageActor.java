@@ -40,6 +40,11 @@ public class StorageActor extends UntypedActor {
     }
   }
 
+  @Override
+  public void postStop() throws Exception {
+    log.debug("Storage stopped");
+  }
+
   HashMap<Long, Status> getStatuses() {
     return statuses;
   }
