@@ -6,17 +6,11 @@
     </encoder>
   </appender>
 
-  <appender name="coalescingStatistics" class="org.perf4j.logback.AsyncCoalescingStatisticsAppender">
-    <param name="TimeSlice" value="5000"/>
-    <appender-ref ref="STDOUT"/>
-  </appender>
-
-  <logger name="org.perf4j.TimingLogger" additivity="false">
-    <level value="INFO"/>
-    <appender-ref ref="coalescingStatistics"/>
-  </logger>
-
   <root level="DEBUG">
     <appender-ref ref="STDOUT"/>
   </root>
+
+  <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+    <resetJUL>true</resetJUL>
+  </contextListener>
 </configuration>

@@ -6,7 +6,6 @@ import akka.actor.UntypedActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import io.onqi.primetester.ActorSystemHolder;
-import org.perf4j.slf4j.Slf4JStopWatch;
 
 import java.math.BigInteger;
 import java.util.Objects;
@@ -20,7 +19,8 @@ public class WorkerActor extends UntypedActor {
   private static final BigInteger TWO = BigInteger.valueOf(2L);
   private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
-  private ActorSelection storage;
+  private ActorSelection taskStorage;
+  private ActorSelection resultStorage;
 
   public static Props createProps() {
     return Props.create(WorkerActor.class);
@@ -29,10 +29,11 @@ public class WorkerActor extends UntypedActor {
   @Override
   public void onReceive(Object message) throws Exception {
     log.debug("Received message {}", message);
-    if (message instanceof StorageActor.TaskIdAssignedMessage) {
-      storage.tell(new CalculationStarted(((StorageActor.TaskIdAssignedMessage) message).getTaskId()), noSender());
-      CalculationFinished response = checkIsPrime((StorageActor.TaskIdAssignedMessage) message);
-      getSender().tell(response, noSender());
+    if (message instanceof TaskStorageActor.TaskIdAssignedMessage) {
+      taskStorage.tell(new CalculationStarted(((TaskStorageActor.TaskIdAssignedMessage) message).getTaskId()), noSender());
+      CalculationFinished response = checkIsPrime((TaskStorageActor.TaskIdAssignedMessage) message);
+      resultStorage.tell(response, noSender());
+      taskStorage.tell(response, noSender());
     } else {
       unhandled(message);
     }
@@ -40,7 +41,8 @@ public class WorkerActor extends UntypedActor {
 
   @Override
   public void preStart() throws Exception {
-    storage = context().system().actorSelection(ActorSystemHolder.STORAGE_PATH);
+    taskStorage = context().system().actorSelection(ActorSystemHolder.TASK_STORAGE_PATH);
+    resultStorage = context().system().actorSelection(ActorSystemHolder.RESULT_STORAGE_PATH);
   }
 
   @Override
@@ -51,28 +53,23 @@ public class WorkerActor extends UntypedActor {
   /**
    * Calculation doesn't utilize the power of {@link BigInteger#isProbablePrime(int)} on purpose as we need the processing to take longer than 20ms
    */
-  public CalculationFinished checkIsPrime(StorageActor.TaskIdAssignedMessage message) {
+  public CalculationFinished checkIsPrime(TaskStorageActor.TaskIdAssignedMessage message) {
     BigInteger n = new BigInteger(message.getNumber());
     log.debug("Checking {}", n);
-    Slf4JStopWatch stopWatch = new Slf4JStopWatch("worker");
-    try {
-      if (ZERO.equals(n) || ONE.equals(n) || TWO.equals(n)) {
-        return new CalculationFinished(message.getTaskId(), message.getNumber(), true, Optional.empty());
-      }
-
-      BigInteger root = approximateRoot(n);
-      log.debug("{}: Using approximate root {}", n, root);
-
-      for (BigInteger divider = TWO; divider.compareTo(root) <= 0; divider = divider.nextProbablePrime()) {
-        if (n.mod(divider).equals(ZERO)) {
-          log.debug("{}: divides by {}", n, divider);
-          return new CalculationFinished(message.getTaskId(), message.getNumber(), false, Optional.of(divider.toString()));
-        }
-      }
+    if (ZERO.equals(n) || ONE.equals(n) || TWO.equals(n)) {
       return new CalculationFinished(message.getTaskId(), message.getNumber(), true, Optional.empty());
-    } finally {
-      stopWatch.stop();
     }
+
+    BigInteger root = approximateRoot(n);
+    log.debug("{}: Using approximate root {}", n, root);
+
+    for (BigInteger divider = TWO; divider.compareTo(root) <= 0; divider = divider.nextProbablePrime()) {
+      if (n.mod(divider).equals(ZERO)) {
+        log.debug("{}: divides by {}", n, divider);
+        return new CalculationFinished(message.getTaskId(), message.getNumber(), false, Optional.of(divider.toString()));
+      }
+    }
+    return new CalculationFinished(message.getTaskId(), message.getNumber(), true, Optional.empty());
   }
 
   private BigInteger approximateRoot(BigInteger n) {
