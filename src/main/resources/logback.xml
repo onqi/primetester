@@ -16,7 +16,7 @@
     <appender-ref ref="coalescingStatistics"/>
   </logger>
 
-  <logger name="io.onqi.primetester.Worker">
+  <logger name="io.onqi.primetester.WorkerActor">
     <level value="INFO"/>
   </logger>
 
