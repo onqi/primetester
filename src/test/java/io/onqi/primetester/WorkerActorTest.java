@@ -20,6 +20,8 @@ public class WorkerActorTest extends JavaTestKit {
 
   public static final long TASK_ID = 1L;
 
+  public static final FiniteDuration TIMEOUT = FiniteDuration.apply(1, TimeUnit.SECONDS);
+
   public WorkerActorTest() {
     super(ActorSystem.create());
   }
@@ -27,37 +29,37 @@ public class WorkerActorTest extends JavaTestKit {
   @Test
   public void primeIsReportedFor1() throws Exception {
     String number = "1";
-    TaskIdAssignedMessage msg = new TaskIdAssignedMessage(TASK_ID, number);
+    StorageActor.TaskIdAssignedMessage msg = new StorageActor.TaskIdAssignedMessage(TASK_ID, number);
 
     ActorRef worker = getSystem().actorOf(WorkerActor.createProps());
     worker.tell(msg, getTestActor());
 
-    expectMsgEquals(FiniteDuration.apply(20, TimeUnit.MILLISECONDS),
-            new WorkerActor.CalculationResult(TASK_ID, number, true, Optional.empty()));
+    expectMsgEquals(TIMEOUT,
+            new WorkerActor.CalculationFinished(TASK_ID, number, true, Optional.empty()));
   }
 
   @Test
-  public void nonPrimeIsReportedFor2() throws Exception {
-    String number = "2";
-    TaskIdAssignedMessage msg = new TaskIdAssignedMessage(TASK_ID, number);
+  public void nonPrimeIsReportedFor459() throws Exception {
+    String number = "459";
+    StorageActor.TaskIdAssignedMessage msg = new StorageActor.TaskIdAssignedMessage(TASK_ID, number);
 
     ActorRef worker = getSystem().actorOf(WorkerActor.createProps());
     worker.tell(msg, getTestActor());
 
-    expectMsgEquals(FiniteDuration.apply(20, TimeUnit.MILLISECONDS),
-            new WorkerActor.CalculationResult(TASK_ID, number, false, Optional.of("1")));
+    expectMsgEquals(TIMEOUT,
+            new WorkerActor.CalculationFinished(TASK_ID, number, false, Optional.of("3")));
   }
 
   @Test
   public void primeIsReportedForRealPrime() throws Exception {
     String number = readPrimes(1).stream().findFirst().orElseThrow(() -> new RuntimeException("failed to read primes"));
-    TaskIdAssignedMessage msg = new TaskIdAssignedMessage(TASK_ID, number);
+    StorageActor.TaskIdAssignedMessage msg = new StorageActor.TaskIdAssignedMessage(TASK_ID, number);
 
     ActorRef worker = getSystem().actorOf(WorkerActor.createProps());
     worker.tell(msg, getTestActor());
 
-    expectMsgEquals(FiniteDuration.apply(1, TimeUnit.SECONDS),
-            new WorkerActor.CalculationResult(TASK_ID, number, true, Optional.empty()));
+    expectMsgEquals(TIMEOUT,
+            new WorkerActor.CalculationFinished(TASK_ID, number, true, Optional.empty()));
   }
 
   @Test

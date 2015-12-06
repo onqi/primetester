@@ -1,5 +1,6 @@
 package io.onqi.primetester;
 
+import akka.actor.ActorSelection;
 import akka.actor.Props;
 import akka.actor.UntypedActor;
 import akka.event.Logging;
@@ -16,8 +17,9 @@ import static java.math.BigInteger.ZERO;
 
 public class WorkerActor extends UntypedActor {
   private static final BigInteger TWO = BigInteger.valueOf(2L);
-  private static final BigInteger THREE = BigInteger.valueOf(3L);
   private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
+
+  private ActorSelection storage;
 
   public static Props createProps() {
     return Props.create(WorkerActor.class);
@@ -26,12 +28,18 @@ public class WorkerActor extends UntypedActor {
   @Override
   public void onReceive(Object message) throws Exception {
     log.debug("Received message {}", message);
-    if (message instanceof TaskIdAssignedMessage) {
-      CalculationResult response = checkIsPrime((TaskIdAssignedMessage) message);
+    if (message instanceof StorageActor.TaskIdAssignedMessage) {
+      storage.tell(new CalculationStarted(((StorageActor.TaskIdAssignedMessage) message).getTaskId()), noSender());
+      CalculationFinished response = checkIsPrime((StorageActor.TaskIdAssignedMessage) message);
       getSender().tell(response, noSender());
     } else {
       unhandled(message);
     }
+  }
+
+  @Override
+  public void preStart() throws Exception {
+    storage = context().system().actorSelection(ActorSystemHolder.STORAGE_PATH);
   }
 
   @Override
@@ -42,29 +50,25 @@ public class WorkerActor extends UntypedActor {
   /**
    * Calculation doesn't utilize the power of {@link BigInteger#isProbablePrime(int)} on purpose as we need the processing to take longer than 20ms
    */
-  public CalculationResult checkIsPrime(TaskIdAssignedMessage message) {
+  public CalculationFinished checkIsPrime(StorageActor.TaskIdAssignedMessage message) {
     BigInteger n = new BigInteger(message.getNumber());
     log.debug("Checking {}", n);
     Slf4JStopWatch stopWatch = new Slf4JStopWatch("worker");
     try {
-      if (ZERO.equals(n) || ONE.equals(n)) {
-        return new CalculationResult(message.getTaskId(), message.getNumber(), true, Optional.empty());
-      }
-
-      if (TWO.equals(n)) {
-        return new CalculationResult(message.getTaskId(), message.getNumber(), false, Optional.of(ONE.toString()));
+      if (ZERO.equals(n) || ONE.equals(n) || TWO.equals(n)) {
+        return new CalculationFinished(message.getTaskId(), message.getNumber(), true, Optional.empty());
       }
 
       BigInteger root = approximateRoot(n);
       log.debug("{}: Using approximate root {}", n, root);
 
-      for (BigInteger divider = THREE; divider.compareTo(root) <= 0; divider = divider.nextProbablePrime()) {
+      for (BigInteger divider = TWO; divider.compareTo(root) <= 0; divider = divider.nextProbablePrime()) {
         if (n.mod(divider).equals(ZERO)) {
           log.debug("{}: divides by {}", n, divider);
-          return new CalculationResult(message.getTaskId(), message.getNumber(), false, Optional.of(divider.toString()));
+          return new CalculationFinished(message.getTaskId(), message.getNumber(), false, Optional.of(divider.toString()));
         }
       }
-      return new CalculationResult(message.getTaskId(), message.getNumber(), true, Optional.empty());
+      return new CalculationFinished(message.getTaskId(), message.getNumber(), true, Optional.empty());
     } finally {
       stopWatch.stop();
     }
@@ -78,7 +82,39 @@ public class WorkerActor extends UntypedActor {
     return half.shiftLeft(1);
   }
 
-  public static class CalculationResult {
+  public static class CalculationStarted {
+    private long taskId;
+
+    public CalculationStarted(long taskId) {
+      this.taskId = taskId;
+    }
+
+    public long getTaskId() {
+      return taskId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      CalculationStarted that = (CalculationStarted) o;
+      return taskId == that.taskId;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(taskId);
+    }
+
+    @Override
+    public String toString() {
+      return "CalculationStarted{" +
+              "taskId=" + taskId +
+              '}';
+    }
+  }
+
+  public static class CalculationFinished {
     private static final long serialVersionUID = 1L;
 
     private final long taskId;
@@ -86,7 +122,7 @@ public class WorkerActor extends UntypedActor {
     private final boolean isPrime;
     private final Optional<String> divider;
 
-    public CalculationResult(long taskId, String number, boolean isPrime, Optional<String> divider) {
+    public CalculationFinished(long taskId, String number, boolean isPrime, Optional<String> divider) {
       this.taskId = taskId;
       this.number = number;
       this.isPrime = isPrime;
@@ -113,7 +149,7 @@ public class WorkerActor extends UntypedActor {
     public boolean equals(Object o) {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
-      CalculationResult that = (CalculationResult) o;
+      CalculationFinished that = (CalculationFinished) o;
       return taskId == that.taskId &&
               isPrime == that.isPrime &&
               Objects.equals(number, that.number) &&
@@ -127,7 +163,7 @@ public class WorkerActor extends UntypedActor {
 
     @Override
     public String toString() {
-      return "CalculationResult{" +
+      return "CalculationFinished{" +
               "taskId=" + taskId +
               ", number='" + number + '\'' +
               ", isPrime=" + isPrime +
