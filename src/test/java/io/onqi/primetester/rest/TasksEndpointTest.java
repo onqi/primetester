@@ -4,6 +4,7 @@ import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 import io.onqi.primetester.Application;
 import io.onqi.primetester.rest.resources.CreateTaskResource;
 import io.onqi.primetester.rest.resources.ResultResource;
+import io.onqi.primetester.rest.resources.TaskStatusResource;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.ClientResponse;
@@ -11,12 +12,13 @@ import org.glassfish.jersey.test.JerseyTest;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.net.URI;
+import java.util.Optional;
+
 import javax.ws.rs.RedirectionException;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.net.URI;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

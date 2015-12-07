@@ -1,4 +1,4 @@
-package io.onqi.primetester.rest;
+package io.onqi.primetester.rest.resources;
 
 import io.onqi.primetester.actors.TaskStorageActor;
 
