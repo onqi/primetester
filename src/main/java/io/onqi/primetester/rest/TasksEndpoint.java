@@ -1,17 +1,21 @@
 package io.onqi.primetester.rest;
 
 import akka.actor.ActorRef;
+import akka.actor.ActorSelection;
 import akka.actor.ActorSystem;
 import akka.dispatch.OnComplete;
 import akka.pattern.Patterns;
 import akka.util.Timeout;
 import io.onqi.primetester.ActorSystemHolder;
+import io.onqi.primetester.actors.NotificationRegistryActor;
 import io.onqi.primetester.actors.TaskStorageActor;
 import io.onqi.primetester.actors.TaskStorageActor.TaskIdAssignedMessage;
 import io.onqi.primetester.actors.TaskStorageActor.TaskStatusMessage;
 import io.onqi.primetester.rest.resources.CreateTaskResource;
 import io.onqi.primetester.rest.resources.ErrorResource;
 import io.onqi.primetester.rest.resources.TaskStatusResource;
+import org.atmosphere.annotation.Suspend;
+import org.atmosphere.cpr.Broadcaster;
 import org.glassfish.jersey.server.ManagedAsync;
 import scala.concurrent.Future;
 
@@ -31,6 +35,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 
+import static akka.actor.ActorRef.noSender;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 @Path("/tasks")
@@ -51,14 +56,23 @@ public class TasksEndpoint {
   }
 
   @GET
-  @Path("{id}")
+  @Path("{taskId}")
   @Produces(MediaType.APPLICATION_JSON)
   @ManagedAsync
   @SuppressWarnings({"VoidMethodAnnotatedWithGET", "unchecked"})
-  public void getStatus(@PathParam("id") long taskId, @Suspended final AsyncResponse response) {
+  public void getStatus(@PathParam("taskId") long taskId, @Suspended final AsyncResponse response) {
     ActorRef taskStorage = actorSystem.actorFor(ActorSystemHolder.TASK_STORAGE_PATH);
     Future<Object> future = Patterns.ask(taskStorage, new TaskStorageActor.GetTaskStatusMessage(taskId), TIMEOUT);
     future.onComplete(new GetStatusCallback(response), actorSystem.dispatcher());
+  }
+
+  @GET
+  @Path("{taskId}/notifications")
+  @Suspend(contentType = "application/json")
+  public String suspend(@PathParam("taskId") Broadcaster topic) {
+    ActorSelection notificationRegistry = actorSystem.actorSelection(ActorSystemHolder.NOTIFICATION_REGISTRY_PATH);
+    notificationRegistry.tell(new NotificationRegistryActor.NotificationRegistration(topic), noSender());
+    return "";
   }
 
   private class CreateTaskCallback extends OnComplete<Object> {

@@ -7,6 +7,8 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 import org.glassfish.jersey.filter.LoggingFilter;
 import org.glassfish.jersey.server.ResourceConfig;
+import org.glassfish.jersey.server.ServerProperties;
+import org.glassfish.jersey.server.TracingConfig;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 import javax.annotation.PreDestroy;
@@ -39,7 +41,7 @@ public class Application extends ResourceConfig {
 
     register(new LoggingFilter());
 
-//    property(ServerProperties.TRACING, TracingConfig.OFF.toString());
+    property(ServerProperties.TRACING, TracingConfig.OFF.toString());
 
     packages("io.onqi");
   }
