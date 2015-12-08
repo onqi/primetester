@@ -19,6 +19,7 @@ public class TaskStorageActor extends UntypedActor {
   private LoggingAdapter log = Logging.getLogger(context().system(), this);
 
   private ActorSelection worker;
+  private ActorSelection notificationRegistry;
 
   private AtomicLong id = new AtomicLong();
   private HashMap<Long, Status> statuses = new HashMap<>();
@@ -42,10 +43,12 @@ public class TaskStorageActor extends UntypedActor {
 
     } else if (message instanceof WorkerActor.CalculationStarted) {
       statuses.put(((WorkerActor.CalculationStarted) message).getTaskId(), Status.STARTED);
+      notificationRegistry.tell(message, noSender());
 
     } else if (message instanceof WorkerActor.CalculationFinished) {
       WorkerActor.CalculationFinished calculationFinished = (WorkerActor.CalculationFinished) message;
       statuses.put(calculationFinished.getTaskId(), Status.FINISHED);
+      notificationRegistry.tell(message, noSender());
 
     } else if (message instanceof GetTaskStatusMessage) {
       long taskId = ((GetTaskStatusMessage) message).getTaskId();
@@ -63,6 +66,7 @@ public class TaskStorageActor extends UntypedActor {
   public void preStart() throws Exception {
     log.debug("Starting TaskStorage");
     worker = context().system().actorSelection(ActorSystemHolder.WORKER_PATH);
+    notificationRegistry = context().system().actorSelection(ActorSystemHolder.NOTIFICATION_REGISTRY_PATH);
   }
 
   @Override

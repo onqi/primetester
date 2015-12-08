@@ -4,6 +4,7 @@ import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 import io.onqi.primetester.Application;
 import io.onqi.primetester.rest.resources.CreateTaskResource;
 import io.onqi.primetester.rest.resources.ResultResource;
+import io.onqi.primetester.rest.resources.TaskStatusResource;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.ClientResponse;

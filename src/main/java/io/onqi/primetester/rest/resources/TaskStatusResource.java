@@ -1,4 +1,4 @@
-package io.onqi.primetester.rest;
+package io.onqi.primetester.rest.resources;
 
 import io.onqi.primetester.actors.TaskStorageActor;
 
@@ -7,17 +7,23 @@ import java.util.Arrays;
 @SuppressWarnings("FieldCanBeLocal")
 public class TaskStatusResource {
   private long taskId;
+  private String number;
   private Status status;
 
   private TaskStatusResource() { /* for serialization only */ }
 
-  public TaskStatusResource(long taskId, TaskStorageActor.Status status) {
+  public TaskStatusResource(long taskId, String number, TaskStorageActor.Status status) {
     this.taskId = taskId;
+    this.number = number;
     this.status = Status.byActorEnum(status);
   }
 
   public long getTaskId() {
     return taskId;
+  }
+
+  public String getNumber() {
+    return number;
   }
 
   public Status getStatus() {

@@ -1,16 +1,25 @@
 package io.onqi.primetester.rest;
 
 import akka.actor.ActorRef;
+import akka.actor.ActorSelection;
 import akka.actor.ActorSystem;
 import akka.dispatch.OnComplete;
 import akka.pattern.Patterns;
 import akka.util.Timeout;
 import io.onqi.primetester.ActorSystemHolder;
+import io.onqi.primetester.actors.NotificationRegistryActor;
 import io.onqi.primetester.actors.TaskStorageActor;
 import io.onqi.primetester.actors.TaskStorageActor.TaskIdAssignedMessage;
 import io.onqi.primetester.actors.TaskStorageActor.TaskStatusMessage;
 import io.onqi.primetester.rest.resources.CreateTaskResource;
 import io.onqi.primetester.rest.resources.ErrorResource;
+import io.onqi.primetester.rest.resources.TaskStatusResource;
+import org.glassfish.jersey.media.sse.EventOutput;
+import org.glassfish.jersey.media.sse.OutboundEvent;
+import org.glassfish.jersey.media.sse.SseBroadcaster;
+import org.glassfish.jersey.media.sse.SseFeature;
+import org.glassfish.jersey.server.BroadcasterListener;
+import org.glassfish.jersey.server.ChunkedOutput;
 import org.glassfish.jersey.server.ManagedAsync;
 import scala.concurrent.Future;
 
@@ -24,6 +33,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import java.net.URI;
 
+import static io.onqi.primetester.actors.TaskStorageActor.Status.QUEUED;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 @Path("/tasks")
@@ -32,6 +42,8 @@ public class TasksEndpoint {
 
   @Context
   private ActorSystem actorSystem;
+
+  private static final SseBroadcaster broadcaster = new SseBroadcaster();
 
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
@@ -44,14 +56,47 @@ public class TasksEndpoint {
   }
 
   @GET
-  @Path("{id}")
+  @Path("{taskId}")
   @Produces(MediaType.APPLICATION_JSON)
   @ManagedAsync
   @SuppressWarnings({"VoidMethodAnnotatedWithGET", "unchecked"})
-  public void getStatus(@PathParam("id") long taskId, @Suspended final AsyncResponse response) {
+  public void getStatus(@PathParam("taskId") long taskId, @Suspended final AsyncResponse response) {
     ActorRef taskStorage = actorSystem.actorFor(ActorSystemHolder.TASK_STORAGE_PATH);
     Future<Object> future = Patterns.ask(taskStorage, new TaskStorageActor.GetTaskStatusMessage(taskId), TIMEOUT);
     future.onComplete(new GetStatusCallback(response), actorSystem.dispatcher());
+  }
+
+  @GET
+  @Path("{taskId}/notifications")
+  @Produces(SseFeature.SERVER_SENT_EVENTS)
+  public EventOutput suspend(@PathParam("taskId") long taskId) {
+    ActorSelection notificationRegistry = actorSystem.actorSelection(ActorSystemHolder.NOTIFICATION_REGISTRY_PATH);
+    SseBroadcaster broadcaster = createNewBroadcaster();
+    final EventOutput eventOutput = new EventOutput();
+
+    if (!broadcaster.add(eventOutput)) {
+      actorSystem.log().error("Unable to add Event Output to a broadcaster!!!");
+    }
+    notificationRegistry.tell(new NotificationRegistryActor.NotificationRegistration(taskId, broadcaster), ActorRef.noSender());
+    return eventOutput;
+  }
+
+  private SseBroadcaster createNewBroadcaster() {
+    SseBroadcaster broadcaster = new SseBroadcaster();
+    broadcaster.add(new BroadcasterListener<OutboundEvent>() {
+      @Override
+      public void onException(ChunkedOutput<OutboundEvent> chunkedOutput, Exception exception) {
+
+        actorSystem.log().error("An exception has been thrown while broadcasting to an event output.", exception);
+      }
+
+      @Override
+      public void onClose(ChunkedOutput<OutboundEvent> chunkedOutput) {
+        actorSystem.log().debug("Connection has been closed");
+      }
+    });
+
+    return broadcaster;
   }
 
   private class CreateTaskCallback extends OnComplete<Object> {
@@ -67,11 +112,8 @@ public class TasksEndpoint {
         res.resume(new ErrorResource(failure.getMessage()).buildResponse());
       } else {
         TaskIdAssignedMessage message = (TaskIdAssignedMessage) result;
-        URI statusLocation = UriBuilder.fromResource(TasksEndpoint.class)
-                .path(TasksEndpoint.class, "getStatus")
-                .build(message.getTaskId());
 
-        res.resume(Response.created(statusLocation).build());
+        res.resume(Response.ok(new TaskStatusResource(message.getTaskId(), message.getNumber(), QUEUED)).build());
       }
     }
   }
@@ -93,13 +135,13 @@ public class TasksEndpoint {
           res.resume(Response.status(Response.Status.NOT_FOUND).build());
         } else {
           if (TaskStorageActor.Status.FINISHED.equals(message.getStatus())) {
-            URI resultLocation = UriBuilder.fromResource(ResultsEndpoint.class)
+            URI resultLocation = UriBuilder.fromPath("/api").path(ResultsEndpoint.class)
                     .path(ResultsEndpoint.class, "getResult")
                     .build(message.getNumber());
 
             res.resume(Response.seeOther(resultLocation).build());
           } else {
-            res.resume(Response.ok(new TaskStatusResource(message.getTaskId(), message.getStatus())).build());
+            res.resume(Response.ok(new TaskStatusResource(message.getTaskId(), message.getNumber(), message.getStatus())).build());
           }
         }
       }
