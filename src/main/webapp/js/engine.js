@@ -3,8 +3,8 @@ $(function () {
     var messageId = 0;
     var content = $('#content');
     var numberInput = $("#numberInput");
-    var submitNumber = $('#submitNumber');
-    var getResult = $('#getResult');
+    var sendBtn = $('#sendBtn');
+    var getResult = $('#getResultBtn');
 
     function subscribeForNotifications(taskId) {
         if (typeof(EventSource) !== 'undefined') {
@@ -29,6 +29,7 @@ $(function () {
                     'url': '/api/tasks/' + JSON.parse(event.data).taskId,
                     'success' : function(response) {
                                     display('Got Result ' + JSON.stringify(response), 'success');
+                                    source.close();
                                 }
                 }
 
@@ -48,7 +49,7 @@ $(function () {
         }
     }
 
-    submitNumber.click(function () {
+    function sendNumber() {
         var data = JSON.stringify({'number': numberInput.val()});
 
         var options = {
@@ -64,9 +65,17 @@ $(function () {
         };
 
         $.ajax(options)
+    }
+
+    sendBtn.click(sendNumber);
+
+    numberInput.keyup(function(event){
+      if(event.which == 13){
+        sendNumber();
+        }
     });
 
-    getResult.click(function() {
+    getResultBtn.click(function() {
         var error = function(error) {
             if (404 == error.status) {
                 display('No result found for number ' + numberInput.val(), 'error');
@@ -95,5 +104,7 @@ $(function () {
     function display(text, level) {
         var css = levels[level || 'info'];
         content.append('<tr class=\"' + css + '\"> <th scope="row">'+ ++messageId +'</th> <td>' + text + '</td></tr>');
+        var objDiv = document.getElementById("results");
+        objDiv.scrollTop = objDiv.scrollHeight;
     }
 });
