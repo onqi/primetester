@@ -1,13 +1,11 @@
 package io.onqi.primetester.rest;
 
 import akka.actor.ActorRef;
-import akka.actor.ActorSelection;
 import akka.actor.ActorSystem;
 import akka.dispatch.OnComplete;
 import akka.pattern.Patterns;
 import akka.util.Timeout;
 import io.onqi.primetester.ActorSystemHolder;
-import io.onqi.primetester.actors.NotificationRegistryActor;
 import io.onqi.primetester.actors.TaskStorageActor;
 import io.onqi.primetester.actors.TaskStorageActor.TaskIdAssignedMessage;
 import io.onqi.primetester.actors.TaskStorageActor.TaskStatusMessage;
@@ -68,14 +66,14 @@ public class TasksEndpoint {
   @Path("{taskId}/notifications")
   @Produces(SseFeature.SERVER_SENT_EVENTS)
   public EventOutput suspend(@PathParam("taskId") long taskId) {
-    ActorSelection notificationRegistry = actorSystem.actorSelection(ActorSystemHolder.NOTIFICATION_REGISTRY_PATH);
+    ActorRef taskStorage = actorSystem.actorFor(ActorSystemHolder.TASK_STORAGE_PATH);
     SseBroadcaster broadcaster = createNewBroadcaster();
     final EventOutput eventOutput = new EventOutput();
 
     if (!broadcaster.add(eventOutput)) {
       actorSystem.log().error("Unable to add Event Output to a broadcaster!!!");
     }
-    notificationRegistry.tell(new NotificationRegistryActor.NotificationRegistration(taskId, broadcaster), ActorRef.noSender());
+    taskStorage.tell(new TaskStorageActor.NotificationRegistration(taskId, broadcaster), ActorRef.noSender());
     return eventOutput;
   }
 

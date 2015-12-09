@@ -37,9 +37,9 @@ public class WorkerActor extends UntypedActor {
 
   private void calculate(TaskStorageActor.TaskIdAssignedMessage message) {
     CalculationStarted started = new CalculationStarted(message.getTaskId());
-    mediator.tell(new DistributedPubSubMediator.Publish(NotificationRegistryActor.TOPIC, started), self());
+    mediator.tell(new DistributedPubSubMediator.Publish(TaskStorageActor.TOPIC, started), self());
     CalculationFinished finished = checkIsPrime(message);
-    mediator.tell(new DistributedPubSubMediator.Publish(NotificationRegistryActor.TOPIC, finished), self());
+    mediator.tell(new DistributedPubSubMediator.Publish(TaskStorageActor.TOPIC, finished), self());
   }
 
   @Override

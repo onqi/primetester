@@ -25,7 +25,7 @@ public class ResultStorageActor extends UntypedActor {
   public void preStart() throws Exception {
     log.info("Starting ResultStorageActor");
     ActorRef mediator = DistributedPubSub.get(getContext().system()).mediator();
-    mediator.tell(new DistributedPubSubMediator.Subscribe(NotificationRegistryActor.TOPIC, getSelf()), getSelf());
+    mediator.tell(new DistributedPubSubMediator.Subscribe(TaskStorageActor.TOPIC, getSelf()), getSelf());
   }
 
   @Override
@@ -59,7 +59,7 @@ public class ResultStorageActor extends UntypedActor {
   }
 
   private void logSubscribeAck() {
-    log.info("Successfully subscribed for topic '{}'", NotificationRegistryActor.TOPIC);
+    log.info("Successfully subscribed for topic '{}'", TaskStorageActor.TOPIC);
   }
 
   HashMap<String, WorkerActor.CalculationFinished> getResults() {
