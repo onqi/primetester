@@ -1,19 +1,22 @@
 package io.onqi.primetester.actors;
 
+import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
-import akka.actor.UntypedActor;
 import akka.cluster.pubsub.DistributedPubSub;
 import akka.cluster.pubsub.DistributedPubSubMediator;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import akka.japi.pf.ReceiveBuilder;
+import scala.PartialFunction;
+import scala.runtime.BoxedUnit;
 
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.Optional;
 
-public class ResultStorage extends UntypedActor {
+public class ResultStorage extends AbstractActor {
   private final LoggingAdapter log = Logging.getLogger(context().system(), this);
   private final HashMap<String, Worker.CalculationFinished> results = new HashMap<>();
 
@@ -25,24 +28,22 @@ public class ResultStorage extends UntypedActor {
   public void preStart() throws Exception {
     log.info("Starting ResultStorage");
     ActorRef mediator = DistributedPubSub.get(getContext().system()).mediator();
-    mediator.tell(new DistributedPubSubMediator.Subscribe(TaskStorage.TOPIC, getSelf()), getSelf());
+    mediator.tell(new DistributedPubSubMediator.Subscribe(TaskStorage.TOPIC, self()), self());
   }
 
   @Override
-  public void onReceive(Object message) throws Exception {
+  public PartialFunction<Object, BoxedUnit> receive() {
+    return ReceiveBuilder
+            .match(Worker.CalculationFinished.class, this::log, this::storeResult)
+            .match(GetCalculationResultMessage.class, this::log, this::handleGet)
+            .match(DistributedPubSubMediator.SubscribeAck.class, m -> logSubscribeAck())
+            .matchAny(this::unhandled)
+            .build();
+  }
+
+  private boolean log(Object message) {
     log.info("Received message {}", message);
-    if (message instanceof Worker.CalculationFinished) {
-      storeResult((Worker.CalculationFinished) message);
-
-    } else if (message instanceof GetCalculationResultMessage) {
-      handleGet((GetCalculationResultMessage) message);
-
-    } else if (message instanceof DistributedPubSubMediator.SubscribeAck) {
-      logSubscribeAck();
-
-    } else {
-      unhandled(message);
-    }
+    return true;
   }
 
   private void storeResult(Worker.CalculationFinished message) {
@@ -55,7 +56,7 @@ public class ResultStorage extends UntypedActor {
     CalculationResultMessage result = Optional.ofNullable(results.get(number))
             .map(cf -> new CalculationResultMessage(cf.getNumber(), cf.isPrime(), cf.getDivider()))
             .orElse(CalculationResultMessage.NOT_FOUND);
-    getSender().tell(result, self());
+    sender().tell(result, self());
   }
 
   private void logSubscribeAck() {

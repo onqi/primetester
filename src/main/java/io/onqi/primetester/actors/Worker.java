@@ -1,12 +1,15 @@
 package io.onqi.primetester.actors;
 
+import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
-import akka.actor.UntypedActor;
 import akka.cluster.pubsub.DistributedPubSub;
 import akka.cluster.pubsub.DistributedPubSubMediator;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import akka.japi.pf.ReceiveBuilder;
+import scala.PartialFunction;
+import scala.runtime.BoxedUnit;
 
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -15,7 +18,7 @@ import java.util.Objects;
 import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.ZERO;
 
-public class Worker extends UntypedActor {
+public class Worker extends AbstractActor {
   private static final BigInteger TWO = BigInteger.valueOf(2L);
   private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
@@ -26,13 +29,22 @@ public class Worker extends UntypedActor {
   }
 
   @Override
-  public void onReceive(Object message) throws Exception {
+  public void preStart() throws Exception {
+    log.info("Starting Worker");
+    mediator = DistributedPubSub.get(getContext().system()).mediator();
+  }
+
+  @Override
+  public PartialFunction<Object, BoxedUnit> receive() {
+    return ReceiveBuilder
+            .match(TaskStorage.TaskIdAssignedMessage.class, this::log, this::calculate)
+            .matchAny(this::unhandled)
+            .build();
+  }
+
+  private boolean log(Object message) {
     log.info("Received message {}", message);
-    if (message instanceof TaskStorage.TaskIdAssignedMessage) {
-      calculate((TaskStorage.TaskIdAssignedMessage) message);
-    } else {
-      unhandled(message);
-    }
+    return true;
   }
 
   private void calculate(TaskStorage.TaskIdAssignedMessage message) {
@@ -40,12 +52,6 @@ public class Worker extends UntypedActor {
     mediator.tell(new DistributedPubSubMediator.Publish(TaskStorage.TOPIC, started), self());
     CalculationFinished finished = checkIsPrime(message);
     mediator.tell(new DistributedPubSubMediator.Publish(TaskStorage.TOPIC, finished), self());
-  }
-
-  @Override
-  public void preStart() throws Exception {
-    log.info("Starting Worker");
-    mediator = DistributedPubSub.get(getContext().system()).mediator();
   }
 
   /**

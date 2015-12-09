@@ -1,17 +1,20 @@
 package io.onqi.primetester.actors;
 
+import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
-import akka.actor.UntypedActor;
 import akka.cluster.pubsub.DistributedPubSub;
 import akka.cluster.pubsub.DistributedPubSubMediator;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import akka.japi.pf.ReceiveBuilder;
 import io.onqi.primetester.ActorSystemHolder;
 import io.onqi.primetester.NewNumberCalculationMessage;
 import io.onqi.primetester.rest.resources.TaskStatusResource;
 import org.glassfish.jersey.media.sse.OutboundEvent;
 import org.glassfish.jersey.media.sse.SseBroadcaster;
+import scala.PartialFunction;
+import scala.runtime.BoxedUnit;
 
 import javax.ws.rs.core.MediaType;
 import java.io.Serializable;
@@ -24,7 +27,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static akka.actor.ActorRef.noSender;
 import static io.onqi.primetester.actors.TaskStorage.Status.QUEUED;
 
-public class TaskStorage extends UntypedActor {
+public class TaskStorage extends AbstractActor {
   public static final String TOPIC = "statusMessages";
   private LoggingAdapter log = Logging.getLogger(context().system(), this);
 
@@ -44,33 +47,25 @@ public class TaskStorage extends UntypedActor {
     log.info("Starting TaskStorage");
     clusterProxy = context().system().actorFor(ActorSystemHolder.CLUSTER_PROXY_PATH);
     ActorRef mediator = DistributedPubSub.get(getContext().system()).mediator();
-    mediator.tell(new DistributedPubSubMediator.Subscribe(TOPIC, getSelf()), getSelf());
+    mediator.tell(new DistributedPubSubMediator.Subscribe(TOPIC, self()), self());
   }
 
   @Override
-  public void onReceive(Object message) throws Exception {
+  public PartialFunction<Object, BoxedUnit> receive() {
+    return ReceiveBuilder
+            .match(NewNumberCalculationMessage.class, this::log, this::queueNewMessage)
+            .match(RegisterForNotifications.class, this::log, this::registerNewSSESubscription)
+            .match(Worker.CalculationStarted.class, this::log, m -> recordStateChange(m.getTaskId(), Status.STARTED))
+            .match(Worker.CalculationFinished.class, this::log, m -> recordStateChange(m.getTaskId(), Status.FINISHED))
+            .match(GetTaskStatusMessage.class, this::log, this::handleGet)
+            .match(DistributedPubSubMediator.SubscribeAck.class, m -> logSubscribeAck())
+            .matchAny(this::unhandled)
+            .build();
+  }
+
+  private boolean log(Object message) {
     log.info("Received message {}", message);
-    if (message instanceof NewNumberCalculationMessage) {
-      queueNewMessage((NewNumberCalculationMessage) message);
-
-    } else if (message instanceof NotificationRegistration) {
-      registerNewSSESubscription((NotificationRegistration) message);
-
-    } else if (message instanceof Worker.CalculationStarted) {
-      recordStateChange(((Worker.CalculationStarted) message).getTaskId(), Status.STARTED);
-
-    } else if (message instanceof Worker.CalculationFinished) {
-      recordStateChange(((Worker.CalculationFinished) message).getTaskId(), Status.FINISHED);
-
-    } else if (message instanceof GetTaskStatusMessage) {
-      handleGet((GetTaskStatusMessage) message);
-
-    } else if (message instanceof DistributedPubSubMediator.SubscribeAck) {
-      logSubscribeAck();
-
-    } else {
-      unhandled(message);
-    }
+    return true;
   }
 
   private void handleGet(GetTaskStatusMessage message) {
@@ -78,7 +73,7 @@ public class TaskStorage extends UntypedActor {
 
     TaskStatusMessage taskStatus = Optional.ofNullable(statuses.get(taskId))
             .map(st -> new TaskStatusMessage(taskId, tasks.get(taskId), st)).orElse(TaskStatusMessage.NOT_FOUND);
-    getSender().tell(taskStatus, self());
+    sender().tell(taskStatus, self());
   }
 
   private void recordStateChange(long taskId, Status status) {
@@ -91,11 +86,11 @@ public class TaskStorage extends UntypedActor {
     tasks.put(taskId, message.getNumber());
     statuses.put(taskId, Status.QUEUED);
     TaskIdAssignedMessage taskIdAssignedMessage = new TaskIdAssignedMessage(taskId, message.getNumber());
-    clusterProxy.tell(taskIdAssignedMessage, getSelf());
-    getSender().tell(taskIdAssignedMessage, noSender());
+    clusterProxy.tell(taskIdAssignedMessage, self());
+    sender().tell(taskIdAssignedMessage, noSender());
   }
 
-  private void registerNewSSESubscription(TaskStorage.NotificationRegistration message) {
+  private void registerNewSSESubscription(RegisterForNotifications message) {
     subscriptions.put(message.taskId, message.broadcaster);
     Status existingStatus = statuses.get(message.taskId);
     if (!QUEUED.equals(existingStatus)) {
@@ -259,13 +254,13 @@ public class TaskStorage extends UntypedActor {
     }
   }
 
-  public static class NotificationRegistration implements Serializable {
+  public static class RegisterForNotifications implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final long taskId;
     private final SseBroadcaster broadcaster;
 
-    public NotificationRegistration(long taskId, SseBroadcaster broadcaster) {
+    public RegisterForNotifications(long taskId, SseBroadcaster broadcaster) {
       this.taskId = taskId;
       this.broadcaster = broadcaster;
     }
@@ -274,7 +269,7 @@ public class TaskStorage extends UntypedActor {
     public boolean equals(Object o) {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
-      NotificationRegistration that = (NotificationRegistration) o;
+      RegisterForNotifications that = (RegisterForNotifications) o;
       return taskId == that.taskId &&
               Objects.equals(broadcaster, that.broadcaster);
     }
@@ -286,7 +281,7 @@ public class TaskStorage extends UntypedActor {
 
     @Override
     public String toString() {
-      return "NotificationRegistration{" +
+      return "RegisterForNotifications{" +
               "taskId=" + taskId +
               ", broadcaster=" + broadcaster +
               '}';

@@ -73,7 +73,7 @@ public class TasksEndpoint {
     if (!broadcaster.add(eventOutput)) {
       actorSystem.log().error("Unable to add Event Output to a broadcaster!!!");
     }
-    taskStorage.tell(new TaskStorage.NotificationRegistration(taskId, broadcaster), ActorRef.noSender());
+    taskStorage.tell(new TaskStorage.RegisterForNotifications(taskId, broadcaster), ActorRef.noSender());
     return eventOutput;
   }
 
