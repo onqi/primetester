@@ -1,7 +1,8 @@
 Prime tester
 ======================
 ## Launch instructions
-Application is built using Maven 3
+Application is built using Maven 3 running on JDK 8
+
 It consists of 2 deployables - Frontend and Worker cluster which are launched separately
 To launch worker cluster (of 3 nodes on `127.0.0.1` using local seed-nodes), type
 
