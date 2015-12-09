@@ -43,8 +43,6 @@ public class TasksEndpoint {
   @Context
   private ActorSystem actorSystem;
 
-  private static final SseBroadcaster broadcaster = new SseBroadcaster();
-
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
   @ManagedAsync

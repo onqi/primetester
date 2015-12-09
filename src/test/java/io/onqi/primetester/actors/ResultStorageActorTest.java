@@ -9,7 +9,6 @@ import org.junit.Test;
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
 
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,7 +34,7 @@ public class ResultStorageActorTest extends JavaTestKit {
     String number = "1";
     TestActorRef<ResultStorageActor> storage = TestActorRef.create(getSystem(), ResultStorageActor.createProps());
 
-    CalculationFinished msg = new CalculationFinished(taskId, number, true, Optional.empty());
+    CalculationFinished msg = new CalculationFinished(taskId, number, true, null);
     storage.tell(msg, getTestActor());
 
     assertThat(storage.underlyingActor().getResults()).contains(entry(number, msg));
@@ -45,17 +44,15 @@ public class ResultStorageActorTest extends JavaTestKit {
   public void returnsCalculationResult() {
     String number = "1";
     long taskId = 1L;
-    Optional<String> divider = Optional.empty();
-    boolean isPrime = true;
 
     TestActorRef<ResultStorageActor> storage = TestActorRef.create(getSystem(), ResultStorageActor.createProps());
-    storage.underlyingActor().getResults().put(number, new CalculationFinished(taskId, number, isPrime, divider));
+    storage.underlyingActor().getResults().put(number, new CalculationFinished(taskId, number, true, null));
 
     ResultStorageActor.GetCalculationResultMessage msg = new ResultStorageActor.GetCalculationResultMessage(number);
     storage.tell(msg, getTestActor());
 
 
-    expectMsgEquals(STORAGE_TIMEOUT, new ResultStorageActor.CalculationResultMessage(number, isPrime, divider));
+    expectMsgEquals(STORAGE_TIMEOUT, new ResultStorageActor.CalculationResultMessage(number, true, null));
   }
 
   @Test

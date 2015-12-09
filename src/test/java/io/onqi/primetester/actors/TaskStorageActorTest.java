@@ -9,7 +9,6 @@ import org.junit.Test;
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
 
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static io.onqi.primetester.actors.TaskStorageActor.Status.*;
@@ -63,7 +62,7 @@ public class TaskStorageActorTest extends JavaTestKit {
     TestActorRef<TaskStorageActor> storage = TestActorRef.create(getSystem(), TaskStorageActor.createProps());
     storage.underlyingActor().getStatuses().put(taskId, STARTED);
 
-    WorkerActor.CalculationFinished msg = new WorkerActor.CalculationFinished(taskId, "1", true, Optional.empty());
+    WorkerActor.CalculationFinished msg = new WorkerActor.CalculationFinished(taskId, "1", true, null);
     storage.tell(msg, getTestActor());
 
     assertThat(storage.underlyingActor().getStatuses()).contains(entry(taskId, FINISHED));

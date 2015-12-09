@@ -9,8 +9,4 @@
   <root level="DEBUG">
     <appender-ref ref="STDOUT"/>
   </root>
-
-  <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
-    <resetJUL>true</resetJUL>
-  </contextListener>
 </configuration>

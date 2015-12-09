@@ -1,7 +1,10 @@
 package io.onqi.primetester.actors;
 
+import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.actor.UntypedActor;
+import akka.cluster.pubsub.DistributedPubSub;
+import akka.cluster.pubsub.DistributedPubSubMediator;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import io.onqi.primetester.rest.resources.TaskStatusResource;
@@ -9,6 +12,7 @@ import org.glassfish.jersey.media.sse.OutboundEvent;
 import org.glassfish.jersey.media.sse.SseBroadcaster;
 
 import javax.ws.rs.core.MediaType;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -18,50 +22,62 @@ import static io.onqi.primetester.actors.TaskStorageActor.Status.FINISHED;
 import static io.onqi.primetester.actors.TaskStorageActor.Status.STARTED;
 
 public class NotificationRegistryActor extends UntypedActor {
+  public static final String TOPIC = "statusMessages";
+
+  private final LoggingAdapter log = Logging.getLogger(context().system(), this);
   private final Map<Long, SseBroadcaster> subscriptions = new HashMap<>();
-  private LoggingAdapter log = Logging.getLogger(context().system(), this);
 
   public static Props createProps() {
     return Props.create(NotificationRegistryActor.class);
   }
 
   @Override
+  public void preStart() throws Exception {
+    log.info("Starting NotificationRegistryActor");
+    ActorRef mediator = DistributedPubSub.get(getContext().system()).mediator();
+    mediator.tell(new DistributedPubSubMediator.Subscribe(NotificationRegistryActor.TOPIC, getSelf()), getSelf());
+  }
+
+  @Override
   public void onReceive(Object message) throws Exception {
-    log.debug("Received message {}", message);
+    log.info("Received message {}", message);
     if (message instanceof NotificationRegistration) {
-      NotificationRegistration msg = (NotificationRegistration) message;
-      subscriptions.put(msg.taskId, msg.broadcaster);
+      registerNewSSESubscription((NotificationRegistration) message);
 
     } else if (message instanceof WorkerActor.CalculationStarted) {
-      WorkerActor.CalculationStarted msg = (WorkerActor.CalculationStarted) message;
-
-      long taskId = msg.getTaskId();
-      OutboundEvent event = new OutboundEvent.Builder()
-              .id(String.valueOf(taskId))
-              .name(STARTED.toString())
-              .data(TaskStatusResource.class, new TaskStatusResource(taskId, null, STARTED))
-              .mediaType(MediaType.APPLICATION_JSON_TYPE)
-              .build();
-      Optional.ofNullable(subscriptions.get(taskId)).ifPresent(b -> b.broadcast(event));
+      broadcast(((WorkerActor.CalculationStarted) message).getTaskId(), STARTED);
 
     } else if (message instanceof WorkerActor.CalculationFinished) {
-      WorkerActor.CalculationFinished msg = (WorkerActor.CalculationFinished) message;
+      broadcast(((WorkerActor.CalculationFinished) message).getTaskId(), FINISHED);
 
-      long taskId = msg.getTaskId();
-      OutboundEvent event = new OutboundEvent.Builder()
-              .id(String.valueOf(taskId))
-              .name(FINISHED.toString())
-              .data(TaskStatusResource.class, new TaskStatusResource(taskId, null, FINISHED))
-              .mediaType(MediaType.APPLICATION_JSON_TYPE)
-              .build();
-      Optional.ofNullable(subscriptions.get(taskId)).ifPresent(b -> b.broadcast(event));
+    } else if (message instanceof DistributedPubSubMediator.SubscribeAck) {
+      logSubscribeAck();
 
     } else {
       unhandled(message);
     }
   }
 
-  public static class NotificationRegistration {
+  private void registerNewSSESubscription(NotificationRegistration message) {
+    subscriptions.put(message.taskId, message.broadcaster);
+  }
+
+
+  private void broadcast(long taskId, TaskStorageActor.Status status) {
+    OutboundEvent event = new OutboundEvent.Builder()
+            .id(String.valueOf(taskId))
+            .name(status.toString())
+            .data(TaskStatusResource.class, new TaskStatusResource(taskId, null, status))
+            .mediaType(MediaType.APPLICATION_JSON_TYPE)
+            .build();
+    Optional.ofNullable(subscriptions.get(taskId)).ifPresent(b -> b.broadcast(event));
+  }
+
+  private void logSubscribeAck() {
+    log.info("Successfully subscribed for topic '{}'", NotificationRegistryActor.TOPIC);
+  }
+
+  public static class NotificationRegistration implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final long taskId;

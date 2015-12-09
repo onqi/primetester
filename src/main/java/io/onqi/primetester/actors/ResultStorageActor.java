@@ -1,65 +1,72 @@
 package io.onqi.primetester.actors;
 
+import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.actor.UntypedActor;
+import akka.cluster.pubsub.DistributedPubSub;
+import akka.cluster.pubsub.DistributedPubSubMediator;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.Optional;
 
-/**
- * Storage for the prime test results.
- * Responsibilities: <ol>
- * <li>storing statuses</li>
- * <li>storing results</li>
- * </ol>
- */
 public class ResultStorageActor extends UntypedActor {
-  private LoggingAdapter log = Logging.getLogger(context().system(), this);
-
-  private HashMap<String, WorkerActor.CalculationFinished> results = new HashMap<>();
+  private final LoggingAdapter log = Logging.getLogger(context().system(), this);
+  private final HashMap<String, WorkerActor.CalculationFinished> results = new HashMap<>();
 
   public static Props createProps() {
     return Props.create(ResultStorageActor.class);
   }
 
-  /**
-   * {@link WorkerActor.CalculationFinished} from {@link WorkerActor} to persist calculation result<br/>
-   */
+  @Override
+  public void preStart() throws Exception {
+    log.info("Starting ResultStorageActor");
+    ActorRef mediator = DistributedPubSub.get(getContext().system()).mediator();
+    mediator.tell(new DistributedPubSubMediator.Subscribe(NotificationRegistryActor.TOPIC, getSelf()), getSelf());
+  }
+
   @Override
   public void onReceive(Object message) throws Exception {
-    log.debug("Received message {}", message);
+    log.info("Received message {}", message);
     if (message instanceof WorkerActor.CalculationFinished) {
-      WorkerActor.CalculationFinished calculationFinished = (WorkerActor.CalculationFinished) message;
-
-      results.put(calculationFinished.getNumber(), calculationFinished);
+      storeResult((WorkerActor.CalculationFinished) message);
 
     } else if (message instanceof GetCalculationResultMessage) {
-      String number = ((GetCalculationResultMessage) message).number;
+      handleGet((GetCalculationResultMessage) message);
 
-      CalculationResultMessage result = Optional.ofNullable(results.get(number))
-              .map(cf -> new CalculationResultMessage(cf.getNumber(), cf.isPrime(), cf.getDivider()))
-              .orElse(CalculationResultMessage.NOT_FOUND);
-      getSender().tell(result, self());
+    } else if (message instanceof DistributedPubSubMediator.SubscribeAck) {
+      logSubscribeAck();
 
     } else {
       unhandled(message);
     }
   }
 
-  @Override
-  public void postStop() throws Exception {
-    log.debug("Storage stopped");
+  private void storeResult(WorkerActor.CalculationFinished message) {
+    results.put(message.getNumber(), message);
   }
 
+  private void handleGet(GetCalculationResultMessage message) {
+    String number = message.number;
+
+    CalculationResultMessage result = Optional.ofNullable(results.get(number))
+            .map(cf -> new CalculationResultMessage(cf.getNumber(), cf.isPrime(), cf.getDivider()))
+            .orElse(CalculationResultMessage.NOT_FOUND);
+    getSender().tell(result, self());
+  }
+
+  private void logSubscribeAck() {
+    log.info("Successfully subscribed for topic '{}'", NotificationRegistryActor.TOPIC);
+  }
 
   HashMap<String, WorkerActor.CalculationFinished> getResults() {
     return results;
   }
 
-  public static class GetCalculationResultMessage {
+  public static class GetCalculationResultMessage implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final String number;
@@ -89,15 +96,15 @@ public class ResultStorageActor extends UntypedActor {
     }
   }
 
-  public static class CalculationResultMessage {
+  public static class CalculationResultMessage implements Serializable {
     private static final long serialVersionUID = 1L;
-    public static final CalculationResultMessage NOT_FOUND = new CalculationResultMessage("", false, Optional.empty());
+    public static final CalculationResultMessage NOT_FOUND = new CalculationResultMessage("", false, null);
 
     private final String number;
     private final boolean isPrime;
-    private final Optional<String> divider;
+    private final String divider;
 
-    public CalculationResultMessage(String number, boolean isPrime, Optional<String> divider) {
+    public CalculationResultMessage(String number, boolean isPrime, String divider) {
       this.number = number;
       this.isPrime = isPrime;
       this.divider = divider;
@@ -111,7 +118,7 @@ public class ResultStorageActor extends UntypedActor {
       return isPrime;
     }
 
-    public Optional<String> getDivider() {
+    public String getDivider() {
       return divider;
     }
 

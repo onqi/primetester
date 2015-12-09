@@ -43,6 +43,21 @@
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
+      <artifactId>akka-cluster_${akka.release}</artifactId>
+      <version>${akka.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.typesafe.akka</groupId>
+      <artifactId>akka-cluster-metrics_${akka.release}</artifactId>
+      <version>${akka.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.typesafe.akka</groupId>
+      <artifactId>akka-contrib_${akka.release}</artifactId>
+      <version>${akka.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.typesafe.akka</groupId>
       <artifactId>akka-testkit_${akka.release}</artifactId>
       <version>${akka.version}</version>
       <scope>test</scope>
@@ -138,6 +153,35 @@
           <target>${target.java.version}</target>
           <encoding>UTF-8</encoding>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.4.0</version>
+        <executions>
+          <execution>
+            <id>allInOne</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <daemonThreadJoinTimeout>0</daemonThreadJoinTimeout>
+              <cleanupDaemonThreads>true</cleanupDaemonThreads>
+              <mainClass>io.onqi.primetester.WorkerCluster$AllInOne</mainClass>
+            </configuration>
+          </execution>
+          <execution>
+            <id>singleNode</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <daemonThreadJoinTimeout>0</daemonThreadJoinTimeout>
+              <cleanupDaemonThreads>true</cleanupDaemonThreads>
+              <mainClass>io.onqi.primetester.WorkerCluster$SingleNode</mainClass>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.eclipse.jetty</groupId>

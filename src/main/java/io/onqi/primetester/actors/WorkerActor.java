@@ -1,17 +1,17 @@
 package io.onqi.primetester.actors;
 
-import akka.actor.ActorSelection;
+import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.actor.UntypedActor;
+import akka.cluster.pubsub.DistributedPubSub;
+import akka.cluster.pubsub.DistributedPubSubMediator;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import io.onqi.primetester.ActorSystemHolder;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.Objects;
-import java.util.Optional;
 
-import static akka.actor.ActorRef.noSender;
 import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.ZERO;
 
@@ -19,8 +19,7 @@ public class WorkerActor extends UntypedActor {
   private static final BigInteger TWO = BigInteger.valueOf(2L);
   private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
-  private ActorSelection taskStorage;
-  private ActorSelection resultStorage;
+  private ActorRef mediator;
 
   public static Props createProps() {
     return Props.create(WorkerActor.class);
@@ -28,26 +27,25 @@ public class WorkerActor extends UntypedActor {
 
   @Override
   public void onReceive(Object message) throws Exception {
-    log.debug("Received message {}", message);
+    log.info("Received message {}", message);
     if (message instanceof TaskStorageActor.TaskIdAssignedMessage) {
-      taskStorage.tell(new CalculationStarted(((TaskStorageActor.TaskIdAssignedMessage) message).getTaskId()), noSender());
-      CalculationFinished response = checkIsPrime((TaskStorageActor.TaskIdAssignedMessage) message);
-      resultStorage.tell(response, noSender());
-      taskStorage.tell(response, noSender());
+      calculate((TaskStorageActor.TaskIdAssignedMessage) message);
     } else {
       unhandled(message);
     }
   }
 
-  @Override
-  public void preStart() throws Exception {
-    taskStorage = context().system().actorSelection(ActorSystemHolder.TASK_STORAGE_PATH);
-    resultStorage = context().system().actorSelection(ActorSystemHolder.RESULT_STORAGE_PATH);
+  private void calculate(TaskStorageActor.TaskIdAssignedMessage message) {
+    CalculationStarted started = new CalculationStarted(message.getTaskId());
+    mediator.tell(new DistributedPubSubMediator.Publish(NotificationRegistryActor.TOPIC, started), self());
+    CalculationFinished finished = checkIsPrime(message);
+    mediator.tell(new DistributedPubSubMediator.Publish(NotificationRegistryActor.TOPIC, finished), self());
   }
 
   @Override
-  public void postStop() throws Exception {
-    log.debug("Worker stopped");
+  public void preStart() throws Exception {
+    log.info("Starting Worker");
+    mediator = DistributedPubSub.get(getContext().system()).mediator();
   }
 
   /**
@@ -57,7 +55,7 @@ public class WorkerActor extends UntypedActor {
     BigInteger n = new BigInteger(message.getNumber());
     log.debug("Checking {}", n);
     if (ZERO.equals(n) || ONE.equals(n) || TWO.equals(n)) {
-      return new CalculationFinished(message.getTaskId(), message.getNumber(), true, Optional.empty());
+      return new CalculationFinished(message.getTaskId(), message.getNumber(), true, null);
     }
 
     BigInteger root = approximateRoot(n);
@@ -66,10 +64,10 @@ public class WorkerActor extends UntypedActor {
     for (BigInteger divider = TWO; divider.compareTo(root) <= 0; divider = divider.nextProbablePrime()) {
       if (n.mod(divider).equals(ZERO)) {
         log.debug("{}: divides by {}", n, divider);
-        return new CalculationFinished(message.getTaskId(), message.getNumber(), false, Optional.of(divider.toString()));
+        return new CalculationFinished(message.getTaskId(), message.getNumber(), false, divider.toString());
       }
     }
-    return new CalculationFinished(message.getTaskId(), message.getNumber(), true, Optional.empty());
+    return new CalculationFinished(message.getTaskId(), message.getNumber(), true, null);
   }
 
   private BigInteger approximateRoot(BigInteger n) {
@@ -80,8 +78,10 @@ public class WorkerActor extends UntypedActor {
     return half.shiftLeft(1);
   }
 
-  public static class CalculationStarted {
-    private long taskId;
+  public static class CalculationStarted implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private final long taskId;
 
     public CalculationStarted(long taskId) {
       this.taskId = taskId;
@@ -112,15 +112,16 @@ public class WorkerActor extends UntypedActor {
     }
   }
 
-  public static class CalculationFinished {
+  public static class CalculationFinished implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final long taskId;
     private final String number;
     private final boolean isPrime;
-    private final Optional<String> divider;
+    private final String divider;
 
-    public CalculationFinished(long taskId, String number, boolean isPrime, Optional<String> divider) {
+
+    public CalculationFinished(long taskId, String number, boolean isPrime, String divider) {
       this.taskId = taskId;
       this.number = number;
       this.isPrime = isPrime;
@@ -139,7 +140,7 @@ public class WorkerActor extends UntypedActor {
       return isPrime;
     }
 
-    public Optional<String> getDivider() {
+    public String getDivider() {
       return divider;
     }
 
