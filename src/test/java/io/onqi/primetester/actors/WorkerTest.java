@@ -13,20 +13,20 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class WorkerActorTest extends JavaTestKit {
+public class WorkerTest extends JavaTestKit {
 
   public static final long TASK_ID = 1L;
 
-  public WorkerActorTest() {
+  public WorkerTest() {
     super(ActorSystem.create());
   }
 
   @Test
   public void primeIsReportedFor1() throws Exception {
     String number = "1";
-    TaskStorageActor.TaskIdAssignedMessage msg = new TaskStorageActor.TaskIdAssignedMessage(TASK_ID, number);
+    TaskStorage.TaskIdAssignedMessage msg = new TaskStorage.TaskIdAssignedMessage(TASK_ID, number);
 
-    ActorRef worker = getSystem().actorOf(WorkerActor.createProps());
+    ActorRef worker = getSystem().actorOf(Worker.createProps());
     worker.tell(msg, getTestActor());
 
     //TODO expect CalculationFinished
@@ -35,9 +35,9 @@ public class WorkerActorTest extends JavaTestKit {
   @Test
   public void nonPrimeIsReportedFor459() throws Exception {
     String number = "459";
-    TaskStorageActor.TaskIdAssignedMessage msg = new TaskStorageActor.TaskIdAssignedMessage(TASK_ID, number);
+    TaskStorage.TaskIdAssignedMessage msg = new TaskStorage.TaskIdAssignedMessage(TASK_ID, number);
 
-    ActorRef worker = getSystem().actorOf(WorkerActor.createProps());
+    ActorRef worker = getSystem().actorOf(Worker.createProps());
     worker.tell(msg, getTestActor());
 
     //TODO expect CalculationFinished
@@ -46,9 +46,9 @@ public class WorkerActorTest extends JavaTestKit {
   @Test
   public void primeIsReportedForRealPrime() throws Exception {
     String number = readPrimes(1).stream().findFirst().orElseThrow(() -> new RuntimeException("failed to read primes"));
-    TaskStorageActor.TaskIdAssignedMessage msg = new TaskStorageActor.TaskIdAssignedMessage(TASK_ID, number);
+    TaskStorage.TaskIdAssignedMessage msg = new TaskStorage.TaskIdAssignedMessage(TASK_ID, number);
 
-    ActorRef worker = getSystem().actorOf(WorkerActor.createProps());
+    ActorRef worker = getSystem().actorOf(Worker.createProps());
     worker.tell(msg, getTestActor());
 
     //TODO expect CalculationFinished
@@ -60,7 +60,7 @@ public class WorkerActorTest extends JavaTestKit {
   }
 
   private static List<String> readPrimes(int count) throws Exception {
-    Stream<String> primesStream = Files.lines(Paths.get(WorkerActorTest.class.getResource("/primes50.txt").toURI()));
+    Stream<String> primesStream = Files.lines(Paths.get(WorkerTest.class.getResource("/primes50.txt").toURI()));
     return primesStream.limit(count).collect(Collectors.toList());
   }
 }

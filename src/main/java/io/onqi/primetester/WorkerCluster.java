@@ -3,7 +3,7 @@ package io.onqi.primetester;
 import akka.actor.ActorSystem;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import io.onqi.primetester.actors.WorkerActor;
+import io.onqi.primetester.actors.Worker;
 
 public class WorkerCluster {
   public static final String WORKER_NAME = "worker";
@@ -30,7 +30,7 @@ public class WorkerCluster {
 
     ActorSystem system = ActorSystem.create("PrimeTesterCluster", config);
 
-    system.actorOf(WorkerActor.createProps(), WORKER_NAME);
+    system.actorOf(Worker.createProps(), WORKER_NAME);
 
   }
 }

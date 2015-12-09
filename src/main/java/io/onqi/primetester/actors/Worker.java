@@ -15,31 +15,31 @@ import java.util.Objects;
 import static java.math.BigInteger.ONE;
 import static java.math.BigInteger.ZERO;
 
-public class WorkerActor extends UntypedActor {
+public class Worker extends UntypedActor {
   private static final BigInteger TWO = BigInteger.valueOf(2L);
   private LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
   private ActorRef mediator;
 
   public static Props createProps() {
-    return Props.create(WorkerActor.class);
+    return Props.create(Worker.class);
   }
 
   @Override
   public void onReceive(Object message) throws Exception {
     log.info("Received message {}", message);
-    if (message instanceof TaskStorageActor.TaskIdAssignedMessage) {
-      calculate((TaskStorageActor.TaskIdAssignedMessage) message);
+    if (message instanceof TaskStorage.TaskIdAssignedMessage) {
+      calculate((TaskStorage.TaskIdAssignedMessage) message);
     } else {
       unhandled(message);
     }
   }
 
-  private void calculate(TaskStorageActor.TaskIdAssignedMessage message) {
+  private void calculate(TaskStorage.TaskIdAssignedMessage message) {
     CalculationStarted started = new CalculationStarted(message.getTaskId());
-    mediator.tell(new DistributedPubSubMediator.Publish(TaskStorageActor.TOPIC, started), self());
+    mediator.tell(new DistributedPubSubMediator.Publish(TaskStorage.TOPIC, started), self());
     CalculationFinished finished = checkIsPrime(message);
-    mediator.tell(new DistributedPubSubMediator.Publish(TaskStorageActor.TOPIC, finished), self());
+    mediator.tell(new DistributedPubSubMediator.Publish(TaskStorage.TOPIC, finished), self());
   }
 
   @Override
@@ -51,7 +51,7 @@ public class WorkerActor extends UntypedActor {
   /**
    * Calculation doesn't utilize the power of {@link BigInteger#isProbablePrime(int)} on purpose as we need the processing to take longer than 20ms
    */
-  public CalculationFinished checkIsPrime(TaskStorageActor.TaskIdAssignedMessage message) {
+  public CalculationFinished checkIsPrime(TaskStorage.TaskIdAssignedMessage message) {
     BigInteger n = new BigInteger(message.getNumber());
     log.debug("Checking {}", n);
     if (ZERO.equals(n) || ONE.equals(n) || TWO.equals(n)) {

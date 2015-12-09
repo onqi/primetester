@@ -4,8 +4,8 @@ import akka.actor.ActorSystem;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.onqi.primetester.actors.ClusterProxy;
-import io.onqi.primetester.actors.ResultStorageActor;
-import io.onqi.primetester.actors.TaskStorageActor;
+import io.onqi.primetester.actors.ResultStorage;
+import io.onqi.primetester.actors.TaskStorage;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import scala.concurrent.duration.Duration;
 
@@ -30,8 +30,8 @@ public class ActorSystemHolder {
     system = ActorSystem.create("PrimeTesterCluster", config);
 
     system.actorOf(ClusterProxy.createProps(), CLUSTER_PROXY_NAME);
-    system.actorOf(TaskStorageActor.createProps(), TASK_STORAGE_NAME);
-    system.actorOf(ResultStorageActor.createProps(), RESULT_STORAGE_NAME);
+    system.actorOf(TaskStorage.createProps(), TASK_STORAGE_NAME);
+    system.actorOf(ResultStorage.createProps(), RESULT_STORAGE_NAME);
   }
 
   public void shutdown() {

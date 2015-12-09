@@ -13,26 +13,26 @@ import java.util.HashMap;
 import java.util.Objects;
 import java.util.Optional;
 
-public class ResultStorageActor extends UntypedActor {
+public class ResultStorage extends UntypedActor {
   private final LoggingAdapter log = Logging.getLogger(context().system(), this);
-  private final HashMap<String, WorkerActor.CalculationFinished> results = new HashMap<>();
+  private final HashMap<String, Worker.CalculationFinished> results = new HashMap<>();
 
   public static Props createProps() {
-    return Props.create(ResultStorageActor.class);
+    return Props.create(ResultStorage.class);
   }
 
   @Override
   public void preStart() throws Exception {
-    log.info("Starting ResultStorageActor");
+    log.info("Starting ResultStorage");
     ActorRef mediator = DistributedPubSub.get(getContext().system()).mediator();
-    mediator.tell(new DistributedPubSubMediator.Subscribe(TaskStorageActor.TOPIC, getSelf()), getSelf());
+    mediator.tell(new DistributedPubSubMediator.Subscribe(TaskStorage.TOPIC, getSelf()), getSelf());
   }
 
   @Override
   public void onReceive(Object message) throws Exception {
     log.info("Received message {}", message);
-    if (message instanceof WorkerActor.CalculationFinished) {
-      storeResult((WorkerActor.CalculationFinished) message);
+    if (message instanceof Worker.CalculationFinished) {
+      storeResult((Worker.CalculationFinished) message);
 
     } else if (message instanceof GetCalculationResultMessage) {
       handleGet((GetCalculationResultMessage) message);
@@ -45,7 +45,7 @@ public class ResultStorageActor extends UntypedActor {
     }
   }
 
-  private void storeResult(WorkerActor.CalculationFinished message) {
+  private void storeResult(Worker.CalculationFinished message) {
     results.put(message.getNumber(), message);
   }
 
@@ -59,10 +59,10 @@ public class ResultStorageActor extends UntypedActor {
   }
 
   private void logSubscribeAck() {
-    log.info("Successfully subscribed for topic '{}'", TaskStorageActor.TOPIC);
+    log.info("Successfully subscribed for topic '{}'", TaskStorage.TOPIC);
   }
 
-  HashMap<String, WorkerActor.CalculationFinished> getResults() {
+  HashMap<String, Worker.CalculationFinished> getResults() {
     return results;
   }
 

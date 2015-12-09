@@ -11,16 +11,16 @@ import scala.concurrent.duration.FiniteDuration;
 
 import java.util.concurrent.TimeUnit;
 
-import static io.onqi.primetester.actors.TaskStorageActor.Status.*;
+import static io.onqi.primetester.actors.TaskStorage.Status.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.MapEntry.entry;
 
-public class TaskStorageActorTest extends JavaTestKit {
+public class TaskStorageTest extends JavaTestKit {
   private static final FiniteDuration TASK_STORAGE_TIMEOUT = Duration.create(20, TimeUnit.MILLISECONDS);
 
   private static final ActorSystem system = ActorSystem.create();
 
-  public TaskStorageActorTest() {
+  public TaskStorageTest() {
     super(system);
   }
 
@@ -33,24 +33,24 @@ public class TaskStorageActorTest extends JavaTestKit {
   public void statusIsCreatedAsQueuedOnNewCalculation() {
     long taskId = 1L;
     String number = "1";
-    TestActorRef<TaskStorageActor> storage = TestActorRef.create(getSystem(), TaskStorageActor.createProps());
+    TestActorRef<TaskStorage> storage = TestActorRef.create(getSystem(), TaskStorage.createProps());
 
     NewNumberCalculationMessage msg = new NewNumberCalculationMessage(number);
     storage.tell(msg, getTestActor());
 
     assertThat(storage.underlyingActor().getTasks()).contains(entry(taskId, number));
-    assertThat(storage.underlyingActor().getStatuses()).contains(entry(taskId, TaskStorageActor.Status.QUEUED));
+    assertThat(storage.underlyingActor().getStatuses()).contains(entry(taskId, TaskStorage.Status.QUEUED));
 
-    expectMsgEquals(TASK_STORAGE_TIMEOUT, new TaskStorageActor.TaskIdAssignedMessage(taskId, number));
+    expectMsgEquals(TASK_STORAGE_TIMEOUT, new TaskStorage.TaskIdAssignedMessage(taskId, number));
   }
 
   @Test
   public void statusIsUpdatedToStartedOnCalculationStarted() {
     long taskId = 1L;
-    TestActorRef<TaskStorageActor> storage = TestActorRef.create(getSystem(), TaskStorageActor.createProps());
+    TestActorRef<TaskStorage> storage = TestActorRef.create(getSystem(), TaskStorage.createProps());
     storage.underlyingActor().getStatuses().put(taskId, QUEUED);
 
-    WorkerActor.CalculationStarted msg = new WorkerActor.CalculationStarted(taskId);
+    Worker.CalculationStarted msg = new Worker.CalculationStarted(taskId);
     storage.tell(msg, getTestActor());
 
     assertThat(storage.underlyingActor().getStatuses()).contains(entry(taskId, STARTED));
@@ -59,10 +59,10 @@ public class TaskStorageActorTest extends JavaTestKit {
   @Test
   public void statusIsUpdatedToFinishedOnCalculationFinished() {
     long taskId = 1L;
-    TestActorRef<TaskStorageActor> storage = TestActorRef.create(getSystem(), TaskStorageActor.createProps());
+    TestActorRef<TaskStorage> storage = TestActorRef.create(getSystem(), TaskStorage.createProps());
     storage.underlyingActor().getStatuses().put(taskId, STARTED);
 
-    WorkerActor.CalculationFinished msg = new WorkerActor.CalculationFinished(taskId, "1", true, null);
+    Worker.CalculationFinished msg = new Worker.CalculationFinished(taskId, "1", true, null);
     storage.tell(msg, getTestActor());
 
     assertThat(storage.underlyingActor().getStatuses()).contains(entry(taskId, FINISHED));
@@ -72,25 +72,25 @@ public class TaskStorageActorTest extends JavaTestKit {
   public void returnsTaskStatus() {
     long taskId = 1L;
     String number = "1";
-    TaskStorageActor.Status status = STARTED;
-    TestActorRef<TaskStorageActor> storage = TestActorRef.create(getSystem(), TaskStorageActor.createProps());
+    TaskStorage.Status status = STARTED;
+    TestActorRef<TaskStorage> storage = TestActorRef.create(getSystem(), TaskStorage.createProps());
     storage.underlyingActor().getTasks().put(taskId, number);
     storage.underlyingActor().getStatuses().put(taskId, status);
 
-    TaskStorageActor.GetTaskStatusMessage msg = new TaskStorageActor.GetTaskStatusMessage(taskId);
+    TaskStorage.GetTaskStatusMessage msg = new TaskStorage.GetTaskStatusMessage(taskId);
     storage.tell(msg, getTestActor());
 
-    expectMsgEquals(TASK_STORAGE_TIMEOUT, new TaskStorageActor.TaskStatusMessage(taskId, number, status));
+    expectMsgEquals(TASK_STORAGE_TIMEOUT, new TaskStorage.TaskStatusMessage(taskId, number, status));
   }
 
   @Test
   public void returnsNotFoundIfNoTask() {
     long taskId = 1L;
-    TestActorRef<TaskStorageActor> storage = TestActorRef.create(getSystem(), TaskStorageActor.createProps());
+    TestActorRef<TaskStorage> storage = TestActorRef.create(getSystem(), TaskStorage.createProps());
 
-    TaskStorageActor.GetTaskStatusMessage msg = new TaskStorageActor.GetTaskStatusMessage(taskId);
+    TaskStorage.GetTaskStatusMessage msg = new TaskStorage.GetTaskStatusMessage(taskId);
     storage.tell(msg, getTestActor());
 
-    expectMsgEquals(TASK_STORAGE_TIMEOUT, TaskStorageActor.TaskStatusMessage.NOT_FOUND);
+    expectMsgEquals(TASK_STORAGE_TIMEOUT, TaskStorage.TaskStatusMessage.NOT_FOUND);
   }
 }

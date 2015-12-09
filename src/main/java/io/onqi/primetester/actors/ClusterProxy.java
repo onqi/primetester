@@ -13,7 +13,7 @@ import scala.runtime.BoxedUnit;
 public class ClusterProxy extends AbstractActor {
   private final LoggingAdapter log = Logging.getLogger(getContext().system(), this);
 
-  private final ActorRef workerRouter = getContext().actorOf(FromConfig.getInstance().props(WorkerActor.createProps()), "workerRouter");
+  private final ActorRef workerRouter = getContext().actorOf(FromConfig.getInstance().props(Worker.createProps()), "workerRouter");
 
   public static Props createProps() {
     return Props.create(ClusterProxy.class);
@@ -22,7 +22,7 @@ public class ClusterProxy extends AbstractActor {
   @Override
   public PartialFunction<Object, BoxedUnit> receive() {
     return ReceiveBuilder
-            .match(TaskStorageActor.TaskIdAssignedMessage.class, this::forward)
+            .match(TaskStorage.TaskIdAssignedMessage.class, this::forward)
             .matchAny(this::unhandled)
             .build();
   }
@@ -32,7 +32,7 @@ public class ClusterProxy extends AbstractActor {
     log.info("Starting Cluster Proxy");
   }
 
-  private void forward(TaskStorageActor.TaskIdAssignedMessage message) {
+  private void forward(TaskStorage.TaskIdAssignedMessage message) {
     log.info("Forwarding message {} to the routees", message);
     workerRouter.tell(message, sender());
   }

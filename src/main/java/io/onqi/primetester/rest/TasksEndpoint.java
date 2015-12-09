@@ -6,9 +6,9 @@ import akka.dispatch.OnComplete;
 import akka.pattern.Patterns;
 import akka.util.Timeout;
 import io.onqi.primetester.ActorSystemHolder;
-import io.onqi.primetester.actors.TaskStorageActor;
-import io.onqi.primetester.actors.TaskStorageActor.TaskIdAssignedMessage;
-import io.onqi.primetester.actors.TaskStorageActor.TaskStatusMessage;
+import io.onqi.primetester.actors.TaskStorage;
+import io.onqi.primetester.actors.TaskStorage.TaskIdAssignedMessage;
+import io.onqi.primetester.actors.TaskStorage.TaskStatusMessage;
 import io.onqi.primetester.rest.resources.CreateTaskResource;
 import io.onqi.primetester.rest.resources.ErrorResource;
 import io.onqi.primetester.rest.resources.TaskStatusResource;
@@ -31,7 +31,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import java.net.URI;
 
-import static io.onqi.primetester.actors.TaskStorageActor.Status.QUEUED;
+import static io.onqi.primetester.actors.TaskStorage.Status.QUEUED;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 @Path("/tasks")
@@ -58,7 +58,7 @@ public class TasksEndpoint {
   @SuppressWarnings({"VoidMethodAnnotatedWithGET", "unchecked"})
   public void getStatus(@PathParam("taskId") long taskId, @Suspended final AsyncResponse response) {
     ActorRef taskStorage = actorSystem.actorFor(ActorSystemHolder.TASK_STORAGE_PATH);
-    Future<Object> future = Patterns.ask(taskStorage, new TaskStorageActor.GetTaskStatusMessage(taskId), TIMEOUT);
+    Future<Object> future = Patterns.ask(taskStorage, new TaskStorage.GetTaskStatusMessage(taskId), TIMEOUT);
     future.onComplete(new GetStatusCallback(response), actorSystem.dispatcher());
   }
 
@@ -73,7 +73,7 @@ public class TasksEndpoint {
     if (!broadcaster.add(eventOutput)) {
       actorSystem.log().error("Unable to add Event Output to a broadcaster!!!");
     }
-    taskStorage.tell(new TaskStorageActor.NotificationRegistration(taskId, broadcaster), ActorRef.noSender());
+    taskStorage.tell(new TaskStorage.NotificationRegistration(taskId, broadcaster), ActorRef.noSender());
     return eventOutput;
   }
 
@@ -130,7 +130,7 @@ public class TasksEndpoint {
         if (TaskStatusMessage.NOT_FOUND.equals(result)) {
           res.resume(Response.status(Response.Status.NOT_FOUND).build());
         } else {
-          if (TaskStorageActor.Status.FINISHED.equals(message.getStatus())) {
+          if (TaskStorage.Status.FINISHED.equals(message.getStatus())) {
             URI resultLocation = UriBuilder.fromPath("/api").path(ResultsEndpoint.class)
                     .path(ResultsEndpoint.class, "getResult")
                     .build(message.getNumber());

@@ -3,7 +3,7 @@ package io.onqi.primetester.actors;
 import akka.actor.ActorSystem;
 import akka.testkit.JavaTestKit;
 import akka.testkit.TestActorRef;
-import io.onqi.primetester.actors.WorkerActor.CalculationFinished;
+import io.onqi.primetester.actors.Worker.CalculationFinished;
 import org.junit.AfterClass;
 import org.junit.Test;
 import scala.concurrent.duration.Duration;
@@ -14,12 +14,12 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.MapEntry.entry;
 
-public class ResultStorageActorTest extends JavaTestKit {
+public class ResultStorageTest extends JavaTestKit {
   private static final FiniteDuration STORAGE_TIMEOUT = Duration.create(20, TimeUnit.MILLISECONDS);
 
   private static final ActorSystem system = ActorSystem.create();
 
-  public ResultStorageActorTest() {
+  public ResultStorageTest() {
     super(system);
   }
 
@@ -32,7 +32,7 @@ public class ResultStorageActorTest extends JavaTestKit {
   public void resultIsStoredOnCalculationFinished() {
     long taskId = 1L;
     String number = "1";
-    TestActorRef<ResultStorageActor> storage = TestActorRef.create(getSystem(), ResultStorageActor.createProps());
+    TestActorRef<ResultStorage> storage = TestActorRef.create(getSystem(), ResultStorage.createProps());
 
     CalculationFinished msg = new CalculationFinished(taskId, number, true, null);
     storage.tell(msg, getTestActor());
@@ -45,26 +45,26 @@ public class ResultStorageActorTest extends JavaTestKit {
     String number = "1";
     long taskId = 1L;
 
-    TestActorRef<ResultStorageActor> storage = TestActorRef.create(getSystem(), ResultStorageActor.createProps());
+    TestActorRef<ResultStorage> storage = TestActorRef.create(getSystem(), ResultStorage.createProps());
     storage.underlyingActor().getResults().put(number, new CalculationFinished(taskId, number, true, null));
 
-    ResultStorageActor.GetCalculationResultMessage msg = new ResultStorageActor.GetCalculationResultMessage(number);
+    ResultStorage.GetCalculationResultMessage msg = new ResultStorage.GetCalculationResultMessage(number);
     storage.tell(msg, getTestActor());
 
 
-    expectMsgEquals(STORAGE_TIMEOUT, new ResultStorageActor.CalculationResultMessage(number, true, null));
+    expectMsgEquals(STORAGE_TIMEOUT, new ResultStorage.CalculationResultMessage(number, true, null));
   }
 
   @Test
   public void returnsNotFoundIfNoResult() {
     String number = "1";
-    TestActorRef<ResultStorageActor> storage = TestActorRef.create(getSystem(), ResultStorageActor.createProps());
+    TestActorRef<ResultStorage> storage = TestActorRef.create(getSystem(), ResultStorage.createProps());
 
-    ResultStorageActor.GetCalculationResultMessage msg = new ResultStorageActor.GetCalculationResultMessage(number);
+    ResultStorage.GetCalculationResultMessage msg = new ResultStorage.GetCalculationResultMessage(number);
     storage.tell(msg, getTestActor());
 
 
-    expectMsgEquals(STORAGE_TIMEOUT, ResultStorageActor.CalculationResultMessage.NOT_FOUND);
+    expectMsgEquals(STORAGE_TIMEOUT, ResultStorage.CalculationResultMessage.NOT_FOUND);
 
   }
 }

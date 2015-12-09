@@ -11,7 +11,7 @@ import akka.util.Timeout;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.onqi.primetester.actors.ClusterProxy;
-import io.onqi.primetester.actors.TaskStorageActor;
+import io.onqi.primetester.actors.TaskStorage;
 import scala.Console;
 
 import java.util.concurrent.TimeUnit;
@@ -34,7 +34,7 @@ public class ClusterClient {
   @SuppressWarnings("unchecked")
   private static void doMessageLoop(ActorSystem system, Cluster cluster, ActorRef clusterParent) {
     while (!Console.readLine().toString().isEmpty()) {
-      Patterns.ask(clusterParent, new TaskStorageActor.TaskIdAssignedMessage(123L, "1234"),
+      Patterns.ask(clusterParent, new TaskStorage.TaskIdAssignedMessage(123L, "1234"),
               Timeout.apply(300, TimeUnit.MILLISECONDS))
               .onComplete(new OnComplete<Object>() {
                 @Override

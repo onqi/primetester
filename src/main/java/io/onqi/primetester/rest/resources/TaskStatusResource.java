@@ -1,6 +1,6 @@
 package io.onqi.primetester.rest.resources;
 
-import io.onqi.primetester.actors.TaskStorageActor;
+import io.onqi.primetester.actors.TaskStorage;
 
 import java.util.Arrays;
 
@@ -12,7 +12,7 @@ public class TaskStatusResource {
 
   private TaskStatusResource() { /* for serialization only */ }
 
-  public TaskStatusResource(long taskId, String number, TaskStorageActor.Status status) {
+  public TaskStatusResource(long taskId, String number, TaskStorage.Status status) {
     this.taskId = taskId;
     this.number = number;
     this.status = Status.byActorEnum(status);
@@ -31,17 +31,17 @@ public class TaskStatusResource {
   }
 
   public enum Status {
-    STARTED(TaskStorageActor.Status.STARTED),
-    QUEUED(TaskStorageActor.Status.QUEUED),
-    FINISHED(TaskStorageActor.Status.FINISHED);
+    STARTED(TaskStorage.Status.STARTED),
+    QUEUED(TaskStorage.Status.QUEUED),
+    FINISHED(TaskStorage.Status.FINISHED);
 
-    private final TaskStorageActor.Status status;
+    private final TaskStorage.Status status;
 
-    Status(TaskStorageActor.Status status) {
+    Status(TaskStorage.Status status) {
       this.status = status;
     }
 
-    public static Status byActorEnum(TaskStorageActor.Status status) {
+    public static Status byActorEnum(TaskStorage.Status status) {
       return Arrays.stream(Status.values())
               .filter(s -> s.status.equals(status)).findFirst()
               .orElseThrow(() -> new IllegalArgumentException(String.format("Unsupported status '%s'", status)));

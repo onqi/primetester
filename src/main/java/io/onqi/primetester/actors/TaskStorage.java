@@ -22,9 +22,9 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static akka.actor.ActorRef.noSender;
-import static io.onqi.primetester.actors.TaskStorageActor.Status.QUEUED;
+import static io.onqi.primetester.actors.TaskStorage.Status.QUEUED;
 
-public class TaskStorageActor extends UntypedActor {
+public class TaskStorage extends UntypedActor {
   public static final String TOPIC = "statusMessages";
   private LoggingAdapter log = Logging.getLogger(context().system(), this);
 
@@ -36,7 +36,7 @@ public class TaskStorageActor extends UntypedActor {
   private final Map<Long, SseBroadcaster> subscriptions = new HashMap<>();
 
   public static Props createProps() {
-    return Props.create(TaskStorageActor.class);
+    return Props.create(TaskStorage.class);
   }
 
   @Override
@@ -56,11 +56,11 @@ public class TaskStorageActor extends UntypedActor {
     } else if (message instanceof NotificationRegistration) {
       registerNewSSESubscription((NotificationRegistration) message);
 
-    } else if (message instanceof WorkerActor.CalculationStarted) {
-      recordStateChange(((WorkerActor.CalculationStarted) message).getTaskId(), Status.STARTED);
+    } else if (message instanceof Worker.CalculationStarted) {
+      recordStateChange(((Worker.CalculationStarted) message).getTaskId(), Status.STARTED);
 
-    } else if (message instanceof WorkerActor.CalculationFinished) {
-      recordStateChange(((WorkerActor.CalculationFinished) message).getTaskId(), Status.FINISHED);
+    } else if (message instanceof Worker.CalculationFinished) {
+      recordStateChange(((Worker.CalculationFinished) message).getTaskId(), Status.FINISHED);
 
     } else if (message instanceof GetTaskStatusMessage) {
       handleGet((GetTaskStatusMessage) message);
@@ -95,7 +95,7 @@ public class TaskStorageActor extends UntypedActor {
     getSender().tell(taskIdAssignedMessage, noSender());
   }
 
-  private void registerNewSSESubscription(TaskStorageActor.NotificationRegistration message) {
+  private void registerNewSSESubscription(TaskStorage.NotificationRegistration message) {
     subscriptions.put(message.taskId, message.broadcaster);
     Status existingStatus = statuses.get(message.taskId);
     if (!QUEUED.equals(existingStatus)) {
@@ -104,7 +104,7 @@ public class TaskStorageActor extends UntypedActor {
   }
 
 
-  private void broadcast(long taskId, TaskStorageActor.Status status) {
+  private void broadcast(long taskId, TaskStorage.Status status) {
     OutboundEvent event = new OutboundEvent.Builder()
             .id(String.valueOf(taskId))
             .name(status.toString())
